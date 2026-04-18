@@ -15,7 +15,9 @@ fn kuli_adapter_is_dyn_compatible() {
 #[test]
 fn kuli_event_serializes_with_tag() {
     use kulisawit_core::adapter::KuliEvent;
-    let evt = KuliEvent::Stdout { text: "hello".into() };
+    let evt = KuliEvent::Stdout {
+        text: "hello".into(),
+    };
     let json = serde_json::to_string(&evt).expect("ser");
     assert!(json.contains("\"type\":\"stdout\""));
     assert!(json.contains("\"text\":\"hello\""));

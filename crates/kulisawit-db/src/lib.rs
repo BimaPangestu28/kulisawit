@@ -1,3 +1,7 @@
 //! SQLite repositories for Kulisawit
-//!
-//! See the workspace root `README.md` and `docs/PRD.md` for the product brief.
+
+pub mod error;
+pub mod pool;
+
+pub use error::{DbError, DbResult};
+pub use pool::{connect, migrate, DbPool};

@@ -10,5 +10,19 @@ description = "SQLite repositories for Kulisawit"
 
 [lib]
 
+[dependencies]
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+kulisawit-core.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tempfile.workspace = true
+
 [lints]
 workspace = true

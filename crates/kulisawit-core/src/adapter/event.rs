@@ -27,10 +27,26 @@ pub struct CheckResult {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum KuliEvent {
-    Stdout { text: String },
-    Stderr { text: String },
-    ToolCall { name: String, input: serde_json::Value },
-    ToolResult { name: String, output: serde_json::Value },
-    FileEdit { path: String, diff: Option<String> },
-    Status { status: RunStatus, detail: Option<String> },
+    Stdout {
+        text: String,
+    },
+    Stderr {
+        text: String,
+    },
+    ToolCall {
+        name: String,
+        input: serde_json::Value,
+    },
+    ToolResult {
+        name: String,
+        output: serde_json::Value,
+    },
+    FileEdit {
+        path: String,
+        diff: Option<String>,
+    },
+    Status {
+        status: RunStatus,
+        detail: Option<String>,
+    },
 }

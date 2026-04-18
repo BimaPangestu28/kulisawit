@@ -35,10 +35,7 @@ pub trait KuliAdapter: Send + Sync + std::fmt::Debug {
 
     async fn check(&self) -> Result<CheckResult, KuliError>;
 
-    async fn run(
-        &self,
-        ctx: RunContext,
-    ) -> Result<BoxStream<'static, KuliEvent>, KuliError>;
+    async fn run(&self, ctx: RunContext) -> Result<BoxStream<'static, KuliEvent>, KuliError>;
 
     async fn cancel(&self, run_id: &str) -> Result<(), KuliError>;
 }
