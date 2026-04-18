@@ -29,6 +29,19 @@ impl AttemptStatus {
     }
 }
 
+impl AttemptStatus {
+    /// Map a terminal adapter `RunStatus` to its database counterpart.
+    /// Non-terminal states (`Starting`, `InProgress`) map to `None`.
+    pub fn from_terminal_run_status(run: RunStatus) -> Option<Self> {
+        match run {
+            RunStatus::Succeeded => Some(Self::Completed),
+            RunStatus::Failed => Some(Self::Failed),
+            RunStatus::Cancelled => Some(Self::Cancelled),
+            RunStatus::Starting | RunStatus::InProgress => None,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("unknown attempt status: {0}")]
 pub struct UnknownAttemptStatus(pub String);
@@ -132,5 +145,27 @@ mod tests {
         assert!(AttemptStatus::Completed.is_terminal());
         assert!(AttemptStatus::Failed.is_terminal());
         assert!(AttemptStatus::Cancelled.is_terminal());
+    }
+
+    #[test]
+    fn run_status_terminal_maps_to_attempt_status() {
+        assert_eq!(
+            AttemptStatus::from_terminal_run_status(RunStatus::Succeeded),
+            Some(AttemptStatus::Completed)
+        );
+        assert_eq!(
+            AttemptStatus::from_terminal_run_status(RunStatus::Failed),
+            Some(AttemptStatus::Failed)
+        );
+        assert_eq!(
+            AttemptStatus::from_terminal_run_status(RunStatus::Cancelled),
+            Some(AttemptStatus::Cancelled)
+        );
+    }
+
+    #[test]
+    fn run_status_non_terminal_maps_to_none() {
+        assert!(AttemptStatus::from_terminal_run_status(RunStatus::Starting).is_none());
+        assert!(AttemptStatus::from_terminal_run_status(RunStatus::InProgress).is_none());
     }
 }
