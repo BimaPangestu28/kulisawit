@@ -34,9 +34,27 @@ use tracing::{instrument, warn};
 
 use crate::{Orchestrator, OrchestratorError, OrchestratorResult};
 
-/// Short id helper: first 8 chars of a UUID-v7-ish string.
+/// Short id helper: first 8 chars of a UUID-v7-ish string (used for task labels).
 fn short(id: &str) -> String {
     id.chars().take(8).collect()
+}
+
+/// Short id helper for attempt IDs: last 12 chars of a UUID v7 string.
+///
+/// UUID v7 embeds a millisecond timestamp in the high bits, so the first 8
+/// characters are identical for IDs generated in the same millisecond.
+/// Parallel batch dispatches create multiple attempt IDs within the same
+/// millisecond; using the tail (which is fully random) ensures branch names
+/// remain unique even under high concurrency.
+fn short_attempt(id: &str) -> String {
+    let s = id.replace('-', "");
+    s.chars()
+        .rev()
+        .take(12)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect()
 }
 
 #[instrument(skip(orch), fields(task = %task_id, agent = agent_id))]
@@ -65,7 +83,7 @@ pub async fn dispatch_single_attempt(
         .ok_or_else(|| OrchestratorError::Invalid(format!("agent not registered: {agent_id}")))?;
 
     let attempt_id = AttemptId::new();
-    let attempt_short = short(attempt_id.as_str());
+    let attempt_short = short_attempt(attempt_id.as_str());
     let task_short = short(task_id.as_str());
     let branch_name = format!("kulisawit/{task_short}/{attempt_short}");
     let worktree_path = orch
