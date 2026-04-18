@@ -9,5 +9,8 @@ use axum::Router;
 use crate::AppState;
 
 pub fn router(state: AppState) -> Router {
-    Router::new().merge(projects::routes()).with_state(state)
+    Router::new()
+        .merge(projects::routes())
+        .merge(tasks::routes())
+        .with_state(state)
 }
