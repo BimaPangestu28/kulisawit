@@ -1,0 +1,16 @@
+[package]
+name = "kulisawit-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Kulisawit CLI"
+
+[[bin]]
+name = "kulisawit"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
