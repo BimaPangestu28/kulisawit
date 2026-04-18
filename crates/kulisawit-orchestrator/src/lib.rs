@@ -22,7 +22,7 @@ pub mod registry;
 
 pub use broadcaster::EventBroadcaster;
 pub use config::RuntimeConfig;
-pub use dispatch::{dispatch_batch, dispatch_single_attempt};
+pub use dispatch::{dispatch_batch, dispatch_batch_spawned, dispatch_single_attempt};
 pub use error::{OrchestratorError, OrchestratorResult};
 pub use orchestrator::Orchestrator;
 pub use registry::AgentRegistry;

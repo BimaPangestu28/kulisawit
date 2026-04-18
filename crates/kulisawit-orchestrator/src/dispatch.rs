@@ -34,6 +34,11 @@ use tracing::{instrument, warn};
 
 use crate::{Orchestrator, OrchestratorError, OrchestratorResult};
 
+/// Boxed future returned by [`reserve_and_build_run`] that drives the agent run
+/// to completion.
+type RunFuture =
+    std::pin::Pin<Box<dyn std::future::Future<Output = OrchestratorResult<()>> + Send>>;
+
 /// Short id helper: first 8 chars of a UUID-v7-ish string (used for task labels).
 fn short(id: &str) -> String {
     id.chars().take(8).collect()
@@ -160,6 +165,180 @@ pub async fn dispatch_single_attempt(
     orch.remove_cancel_flag(&attempt_id).await;
 
     Ok(attempt_id)
+}
+
+/// Split `dispatch_single_attempt` into two phases so the server can return
+/// AttemptIds immediately while the agent run proceeds in the background.
+///
+/// Returns `(attempt_id, run_future)`. The future completes when the attempt
+/// reaches a terminal `AttemptStatus` (Completed/Failed/Cancelled).
+#[instrument(skip(orch), fields(task = %task_id, agent = agent_id))]
+async fn reserve_and_build_run(
+    orch: Arc<Orchestrator>,
+    task_id: TaskId,
+    agent_id: String,
+    prompt_variant: Option<String>,
+) -> OrchestratorResult<(AttemptId, RunFuture)> {
+    let _permit = orch
+        .semaphore()
+        .clone()
+        .acquire_owned()
+        .await
+        .map_err(|e| OrchestratorError::Invalid(format!("semaphore closed: {e}")))?;
+
+    let task_row = task::get(orch.pool(), &task_id)
+        .await?
+        .ok_or_else(|| OrchestratorError::Invalid(format!("task not found: {task_id}")))?;
+
+    let prompt = crate::prompt::compose_prompt(&task_row, prompt_variant.as_deref());
+
+    let adapter = orch
+        .registry()
+        .get(&agent_id)
+        .ok_or_else(|| OrchestratorError::Invalid(format!("agent not registered: {agent_id}")))?;
+
+    let draft_id = AttemptId::new();
+    let attempt_short = short_attempt(draft_id.as_str());
+    let task_short = short(task_id.as_str());
+    let branch_name = format!("kulisawit/{task_short}/{attempt_short}");
+    let worktree_path = orch
+        .worktree_root()
+        .join(format!("attempt-{attempt_short}"));
+
+    let base_ref = head_commit_sha(orch.repo_root()).map_err(OrchestratorError::from)?;
+
+    let attempt_id = attempt::create(
+        orch.pool(),
+        attempt::NewAttempt {
+            task_id: task_id.clone(),
+            agent_id: agent_id.clone(),
+            prompt_variant: prompt_variant.clone(),
+            worktree_path: worktree_path.display().to_string(),
+            branch_name: branch_name.clone(),
+        },
+    )
+    .await?;
+
+    let wt_outcome = create_worktree(CreateWorktreeRequest {
+        repo_root: orch.repo_root().to_path_buf(),
+        worktree_root: orch.worktree_root().to_path_buf(),
+        attempt_short_id: attempt_short.clone(),
+        branch_name: branch_name.clone(),
+        base_ref,
+    })
+    .await?;
+
+    let cancel_notify = orch.install_cancel_flag(&attempt_id).await;
+
+    let orch_for_run = orch.clone();
+    let attempt_id_for_run = attempt_id.clone();
+    let attempt_title = task_row.title;
+    let run_future = Box::pin(async move {
+        let orch = orch_for_run;
+        let attempt_id = attempt_id_for_run;
+
+        attempt::mark_running(orch.pool(), &attempt_id).await?;
+
+        let run_ctx = RunContext {
+            run_id: attempt_id.as_str().to_owned(),
+            worktree_path: wt_outcome.worktree_path.clone(),
+            prompt,
+            prompt_variant,
+            env: std::collections::HashMap::new(),
+        };
+
+        let mut stream = adapter.run(run_ctx).await?;
+
+        let terminal: AttemptStatus = loop {
+            tokio::select! {
+                biased;
+                _ = cancel_notify.notified() => {
+                    let _ = adapter.cancel(attempt_id.as_str()).await;
+                    let evt = AgentEvent::Status {
+                        status: RunStatus::Cancelled,
+                        detail: Some("cancelled by orchestrator".into()),
+                    };
+                    let _ = events::append(orch.pool(), &attempt_id, &evt).await;
+                    orch.broadcaster().send(&attempt_id, evt);
+                    break AttemptStatus::Cancelled;
+                }
+                next = stream.next() => {
+                    let Some(evt) = next else {
+                        warn!(attempt = %attempt_id, "adapter stream ended without terminal status");
+                        break AttemptStatus::Failed;
+                    };
+                    let _ = events::append(orch.pool(), &attempt_id, &evt).await;
+                    orch.broadcaster().send(&attempt_id, evt.clone());
+                    if let AgentEvent::Status { status, .. } = &evt {
+                        if let Some(mapped) = AttemptStatus::from_terminal_run_status(*status) {
+                            break mapped;
+                        }
+                    }
+                }
+            }
+        };
+
+        let commit_msg = format!("kulisawit: attempt {attempt_short} for {attempt_title}");
+        if let Err(e) = commit_all_in_worktree(&wt_outcome.worktree_path, &commit_msg).await {
+            warn!(attempt = %attempt_id, "commit_all_in_worktree failed: {e}");
+        }
+
+        attempt::mark_terminal(orch.pool(), &attempt_id, terminal).await?;
+
+        orch.broadcaster().close(&attempt_id);
+        orch.remove_cancel_flag(&attempt_id).await;
+
+        let _ = draft_id;
+        drop(_permit);
+        Ok(())
+    });
+
+    Ok((attempt_id, run_future))
+}
+
+/// Dispatch a batch; return the `AttemptId`s after each attempt has its DB row
+/// inserted and its worktree created. The agent drives run in a background
+/// `tokio::spawn`. This is the async-dispatch entry point used by the HTTP
+/// server.
+#[instrument(skip(orch), fields(task = %task_id, agent = agent_id, n = batch_size))]
+pub async fn dispatch_batch_spawned(
+    orch: &Arc<Orchestrator>,
+    task_id: &TaskId,
+    agent_id: &str,
+    batch_size: usize,
+    variants: Option<Vec<String>>,
+) -> OrchestratorResult<Vec<AttemptId>> {
+    if batch_size == 0 {
+        return Err(OrchestratorError::Invalid("batch_size must be >= 1".into()));
+    }
+    if let Some(v) = &variants {
+        if v.len() != batch_size {
+            return Err(OrchestratorError::Invalid(format!(
+                "variants length {} != batch_size {}",
+                v.len(),
+                batch_size
+            )));
+        }
+    }
+
+    let mut ids = Vec::with_capacity(batch_size);
+    for i in 0..batch_size {
+        let variant = variants.as_ref().and_then(|v| v.get(i).cloned());
+        let (id, run_future) = reserve_and_build_run(
+            Arc::clone(orch),
+            task_id.clone(),
+            agent_id.to_owned(),
+            variant,
+        )
+        .await?;
+        ids.push(id);
+        tokio::spawn(async move {
+            if let Err(e) = run_future.await {
+                warn!("spawned attempt failed: {e}");
+            }
+        });
+    }
+    Ok(ids)
 }
 
 #[instrument(skip(orch), fields(task = %task_id, agent = agent_id, n = batch_size))]

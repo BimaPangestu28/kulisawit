@@ -148,3 +148,90 @@ async fn dispatch_batch_with_variants_len_mismatch_errors() {
     let msg = format!("{err}");
     assert!(msg.contains("variants length"), "got: {msg}");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn dispatch_batch_spawned_returns_ids_before_agents_finish() {
+    let base = tempdir().expect("tmp");
+    init_repo(base.path());
+    let pool = connect("sqlite::memory:").await.expect("pool");
+    migrate(&pool).await.expect("mig");
+    let mut registry = AgentRegistry::new();
+    registry.register(Arc::new(MockAgent::new(MockMode::Slow)) as Arc<dyn AgentAdapter>);
+    let orch = std::sync::Arc::new(Orchestrator::new(
+        pool,
+        registry,
+        base.path().to_path_buf(),
+        base.path().join(".kulisawit/worktrees"),
+        RuntimeConfig::default(),
+    ));
+
+    let project_id = project::create(
+        orch.pool(),
+        project::NewProject {
+            name: "K".into(),
+            repo_path: base.path().display().to_string(),
+        },
+    )
+    .await
+    .expect("p");
+    let cols = columns::seed_defaults(orch.pool(), &project_id)
+        .await
+        .expect("c");
+    let task_id = task::create(
+        orch.pool(),
+        task::NewTask {
+            project_id,
+            column_id: cols[0].clone(),
+            title: "batch spawned".into(),
+            description: None,
+            tags: vec![],
+            linked_files: vec![],
+        },
+    )
+    .await
+    .expect("t");
+
+    let before = std::time::Instant::now();
+    let ids = kulisawit_orchestrator::dispatch_batch_spawned(&orch, &task_id, "mock", 2, None)
+        .await
+        .expect("spawned");
+    let elapsed_ms = before.elapsed().as_millis();
+    assert_eq!(ids.len(), 2);
+    assert!(
+        elapsed_ms < 500,
+        "dispatch_batch_spawned should return immediately, took {elapsed_ms}ms"
+    );
+
+    for id in &ids {
+        let row = attempt::get(orch.pool(), id)
+            .await
+            .expect("get")
+            .expect("row");
+        assert!(
+            matches!(
+                row.status,
+                kulisawit_core::AttemptStatus::Queued | kulisawit_core::AttemptStatus::Running
+            ),
+            "expected Queued/Running, got {:?}",
+            row.status
+        );
+    }
+
+    for id in &ids {
+        for _ in 0..200 {
+            let row = attempt::get(orch.pool(), id)
+                .await
+                .expect("get")
+                .expect("row");
+            if matches!(
+                row.status,
+                kulisawit_core::AttemptStatus::Completed
+                    | kulisawit_core::AttemptStatus::Failed
+                    | kulisawit_core::AttemptStatus::Cancelled
+            ) {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    }
+}
