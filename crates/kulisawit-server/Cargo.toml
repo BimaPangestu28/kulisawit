@@ -10,5 +10,26 @@ description = "Axum HTTP + SSE server for Kulisawit"
 
 [lib]
 
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+chrono.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tower.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+kulisawit-core.workspace = true
+kulisawit-db.workspace = true
+kulisawit-agent.workspace = true
+kulisawit-orchestrator.workspace = true
+
+[dev-dependencies]
+reqwest.workspace = true
+tempfile.workspace = true
+
 [lints]
 workspace = true
