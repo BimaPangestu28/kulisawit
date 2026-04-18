@@ -1,0 +1,33 @@
+[package]
+name = "kulisawit-orchestrator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Orchestrator for Kulisawit: dispatches agent attempts into isolated worktrees"
+
+[lib]
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full"] }
+toml.workspace = true
+tracing.workspace = true
+kulisawit-core.workspace = true
+kulisawit-db.workspace = true
+kulisawit-git.workspace = true
+kulisawit-agent.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[lints]
+workspace = true
