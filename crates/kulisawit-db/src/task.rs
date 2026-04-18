@@ -86,16 +86,14 @@ pub async fn get(pool: &DbPool, id: &TaskId) -> DbResult<Option<Task>> {
     .fetch_optional(pool)
     .await?;
     row.map(|r| {
-        // NOTE: SQLx infers id/project_id/column_id as Option<String> despite NOT NULL.
-        // Use the same helper pattern as project.rs / columns.rs for null guards.
+        // SQLx infers `id` as Option<String> (rowid alias); `project_id` and `column_id`
+        // are plain String — NOT NULL in schema and confirmed non-nullable in .sqlx metadata.
         let id =
             r.id.ok_or_else(|| DbError::Invalid("task.id null".into()))?;
-        let project_id = r.project_id;
-        let column_id = r.column_id;
         Ok::<_, DbError>(Task {
             id: TaskId::from_string(id),
-            project_id: ProjectId::from_string(project_id),
-            column_id: ColumnId::from_string(column_id),
+            project_id: ProjectId::from_string(r.project_id),
+            column_id: ColumnId::from_string(r.column_id),
             title: r.title,
             description: r.description,
             position: r.position,
@@ -119,14 +117,14 @@ pub async fn list_for_column(pool: &DbPool, column_id: &ColumnId) -> DbResult<Ve
     .await?;
     rows.into_iter()
         .map(|r| {
+            // `id` is Option<String> (rowid alias); `project_id` and `column_id` are plain
+            // String — NOT NULL in schema and confirmed non-nullable in .sqlx metadata.
             let id =
                 r.id.ok_or_else(|| DbError::Invalid("task.id null".into()))?;
-            let project_id = r.project_id;
-            let column_id = r.column_id;
             Ok::<_, DbError>(Task {
                 id: TaskId::from_string(id),
-                project_id: ProjectId::from_string(project_id),
-                column_id: ColumnId::from_string(column_id),
+                project_id: ProjectId::from_string(r.project_id),
+                column_id: ColumnId::from_string(r.column_id),
                 title: r.title,
                 description: r.description,
                 position: r.position,
