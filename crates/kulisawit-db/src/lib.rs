@@ -3,6 +3,7 @@
 pub mod attempt;
 pub mod columns;
 pub mod error;
+pub mod events;
 pub mod pool;
 pub mod project;
 pub mod task;
