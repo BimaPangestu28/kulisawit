@@ -21,3 +21,14 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --all-targets --locked
       - run: cargo test --workspace --locked
+
+  sqlx-prepare-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.86
+      - uses: Swatinem/rust-cache@v2
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --version ^0.8 --no-default-features --features sqlite,rustls --locked
+      - name: Verify offline metadata is up to date
+        run: cargo sqlx prepare --workspace --check -- --all-targets
