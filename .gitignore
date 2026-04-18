@@ -1,0 +1,11 @@
+/target
+Cargo.lock.bak
+.kulisawit/
+node_modules/
+ui/dist/
+ui/node_modules/
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/settings.json
