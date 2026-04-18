@@ -9,3 +9,6 @@ authors.workspace = true
 description = "SQLite repositories for Kulisawit"
 
 [lib]
+
+[lints]
+workspace = true

@@ -9,3 +9,6 @@ authors.workspace = true
 description = "Axum HTTP + SSE server for Kulisawit"
 
 [lib]
+
+[lints]
+workspace = true

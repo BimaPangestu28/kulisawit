@@ -9,3 +9,6 @@ authors.workspace = true
 description = "Built-in Kuli adapters for Kulisawit"
 
 [lib]
+
+[lints]
+workspace = true

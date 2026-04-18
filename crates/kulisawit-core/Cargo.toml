@@ -9,3 +9,6 @@ authors.workspace = true
 description = "Kulisawit domain types, adapter trait, orchestrator"
 
 [lib]
+
+[lints]
+workspace = true

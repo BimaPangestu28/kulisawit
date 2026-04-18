@@ -9,3 +9,6 @@ authors.workspace = true
 description = "Git worktree (petak) management for Kulisawit"
 
 [lib]
+
+[lints]
+workspace = true

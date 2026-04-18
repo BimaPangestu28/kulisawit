@@ -74,3 +74,12 @@ panic = "abort"
 [profile.dev]
 debug = 1          # line tables only; faster links
 split-debuginfo = "unpacked"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+
+[workspace.lints.rust]
+missing_debug_implementations = "warn"
+rust_2018_idioms = "warn"
