@@ -1,4 +1,6 @@
-//! `/api/tasks` endpoints (dispatch lives here; implemented in Task 3.1.8).
+//! `/api/tasks` endpoints including `/api/tasks/:id/dispatch`.
+
+use std::sync::Arc;
 
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
@@ -9,14 +11,16 @@ use kulisawit_db::{
     columns, project,
     task::{self, NewTask},
 };
+use kulisawit_orchestrator::dispatch_batch_spawned;
 
-use crate::wire::{NewTaskRequest, TaskResponse};
+use crate::wire::{DispatchRequest, DispatchResponse, NewTaskRequest, TaskResponse};
 use crate::{AppState, ServerError, ServerResult};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/tasks", post(create))
         .route("/api/tasks/:id", get(get_by_id))
+        .route("/api/tasks/:id/dispatch", post(dispatch))
 }
 
 async fn create(
@@ -69,4 +73,29 @@ async fn get_by_id(
             id: id.as_str().to_owned(),
         })?;
     Ok(Json(row.into()))
+}
+
+async fn dispatch(
+    State(state): State<AppState>,
+    Path(id): Path<TaskId>,
+    Json(req): Json<DispatchRequest>,
+) -> ServerResult<Json<DispatchResponse>> {
+    if task::get(state.orch.pool(), &id).await?.is_none() {
+        return Err(ServerError::NotFound {
+            entity: "task",
+            id: id.as_str().to_owned(),
+        });
+    }
+
+    let orch = Arc::clone(&state.orch);
+    let attempt_ids = dispatch_batch_spawned(&orch, &id, &req.agent, req.batch, req.variants)
+        .await
+        .map_err(|e| match e {
+            kulisawit_orchestrator::OrchestratorError::Invalid(msg) => {
+                ServerError::InvalidInput(msg)
+            }
+            other => ServerError::from(other),
+        })?;
+
+    Ok(Json(DispatchResponse { attempt_ids }))
 }
