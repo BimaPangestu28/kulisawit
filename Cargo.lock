@@ -682,6 +682,14 @@ dependencies = [
 [[package]]
 name = "kulisawit-agent"
 version = "0.1.0-dev"
+dependencies = [
+ "async-trait",
+ "futures",
+ "kulisawit-core",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "kulisawit-cli"

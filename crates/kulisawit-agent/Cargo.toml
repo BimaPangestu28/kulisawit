@@ -10,5 +10,17 @@ description = "Built-in agent adapters for Kulisawit"
 
 [lib]
 
+[dependencies]
+async-trait.workspace = true
+futures.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+kulisawit-core.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+futures.workspace = true
+
 [lints]
 workspace = true
