@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE attempt SET verification_status = ?, verification_output = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "610b61e846cef3929678ee2a4fc0cb726748e8514e60de9580e61c2101e85e3e"
+}

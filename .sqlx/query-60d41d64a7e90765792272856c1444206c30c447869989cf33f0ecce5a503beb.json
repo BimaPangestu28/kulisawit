@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO attempt (id, task_id, agent_id, prompt_variant, worktree_path, branch_name, status)\n         VALUES (?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "60d41d64a7e90765792272856c1444206c30c447869989cf33f0ecce5a503beb"
+}

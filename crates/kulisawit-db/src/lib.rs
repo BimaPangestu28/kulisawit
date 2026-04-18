@@ -1,5 +1,6 @@
 //! SQLite repositories for Kulisawit
 
+pub mod attempt;
 pub mod columns;
 pub mod error;
 pub mod pool;

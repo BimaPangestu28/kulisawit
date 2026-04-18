@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, task_id, agent_id, prompt_variant, worktree_path, branch_name, status,\n                started_at, completed_at, verification_status, verification_output\n         FROM attempt WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt_variant",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "worktree_path",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch_name",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "started_at",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "completed_at",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "verification_status",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "verification_output",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "1fca302e9d08a48339adb5c0cc0a5e6cc65280a2666c9a4a90125a4463f827b5"
+}
