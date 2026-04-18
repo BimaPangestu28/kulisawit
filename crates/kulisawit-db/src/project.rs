@@ -27,7 +27,7 @@ fn parse_id(raw: Option<String>) -> DbResult<ProjectId> {
 
 pub async fn create(pool: &DbPool, new: NewProject) -> DbResult<ProjectId> {
     let id = ProjectId::new();
-    let created_at = Utc::now().timestamp();
+    let created_at = Utc::now().timestamp_millis();
     let id_str = id.as_str();
     sqlx::query!(
         "INSERT INTO project (id, name, repo_path, created_at) VALUES (?, ?, ?, ?)",

@@ -43,7 +43,7 @@ async fn next_position(pool: &DbPool, column_id: &ColumnId) -> DbResult<i64> {
 
 pub async fn create(pool: &DbPool, new: NewTask) -> DbResult<TaskId> {
     let id = TaskId::new();
-    let now = Utc::now().timestamp();
+    let now = Utc::now().timestamp_millis();
     let position = next_position(pool, &new.column_id).await?;
     let tags_json = serde_json::to_string(&new.tags)?;
     let files_json = serde_json::to_string(&new.linked_files)?;
@@ -143,7 +143,7 @@ pub async fn update_text(
     title: &str,
     description: Option<&str>,
 ) -> DbResult<()> {
-    let now = Utc::now().timestamp();
+    let now = Utc::now().timestamp_millis();
     let id_str = id.as_str();
     sqlx::query!(
         "UPDATE task SET title = ?, description = ?, updated_at = ? WHERE id = ?",
@@ -159,7 +159,7 @@ pub async fn update_text(
 
 pub async fn move_to_column(pool: &DbPool, id: &TaskId, column_id: &ColumnId) -> DbResult<()> {
     let position = next_position(pool, column_id).await?;
-    let now = Utc::now().timestamp();
+    let now = Utc::now().timestamp_millis();
     let id_str = id.as_str();
     let col_str = column_id.as_str();
     sqlx::query!(

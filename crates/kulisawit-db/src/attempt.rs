@@ -155,7 +155,7 @@ pub async fn list_for_task(pool: &DbPool, task_id: &TaskId) -> DbResult<Vec<Atte
 }
 
 pub async fn mark_running(pool: &DbPool, id: &AttemptId) -> DbResult<()> {
-    let now = Utc::now().timestamp();
+    let now = Utc::now().timestamp_millis();
     let id_str = id.as_str();
     let status = AttemptStatus::Running.as_str();
     sqlx::query!(
@@ -175,7 +175,7 @@ pub async fn mark_terminal(pool: &DbPool, id: &AttemptId, status: AttemptStatus)
             "mark_terminal called with non-terminal status: {status:?}"
         )));
     }
-    let now = Utc::now().timestamp();
+    let now = Utc::now().timestamp_millis();
     let id_str = id.as_str();
     let status_str = status.as_str();
     sqlx::query!(
