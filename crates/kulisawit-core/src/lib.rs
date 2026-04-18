@@ -10,4 +10,6 @@ pub mod status;
 pub use adapter::{AgentAdapter, AgentError, AgentEvent, CheckResult, RunContext};
 pub use error::{CoreError, CoreResult};
 pub use ids::{AttemptId, ColumnId, ProjectId, TaskId};
-pub use status::{AttemptStatus, RunStatus, UnknownAttemptStatus, VerificationStatus};
+pub use status::{
+    AttemptStatus, RunStatus, UnknownAttemptStatus, UnknownVerificationStatus, VerificationStatus,
+};

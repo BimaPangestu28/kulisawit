@@ -82,6 +82,34 @@ pub enum VerificationStatus {
     Skipped,
 }
 
+impl VerificationStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Passed => "passed",
+            Self::Failed => "failed",
+            Self::Skipped => "skipped",
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("unknown verification status: {0}")]
+pub struct UnknownVerificationStatus(pub String);
+
+impl TryFrom<&str> for VerificationStatus {
+    type Error = UnknownVerificationStatus;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "pending" => Ok(Self::Pending),
+            "passed" => Ok(Self::Passed),
+            "failed" => Ok(Self::Failed),
+            "skipped" => Ok(Self::Skipped),
+            other => Err(UnknownVerificationStatus(other.to_owned())),
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::panic)]
 mod tests {
@@ -167,5 +195,29 @@ mod tests {
     fn run_status_non_terminal_maps_to_none() {
         assert!(AttemptStatus::from_terminal_run_status(RunStatus::Starting).is_none());
         assert!(AttemptStatus::from_terminal_run_status(RunStatus::InProgress).is_none());
+    }
+
+    #[test]
+    fn verification_status_round_trips_to_str() {
+        for status in [
+            VerificationStatus::Pending,
+            VerificationStatus::Passed,
+            VerificationStatus::Failed,
+            VerificationStatus::Skipped,
+        ] {
+            let s = status.as_str();
+            let back = VerificationStatus::try_from(s).expect("roundtrip");
+            assert_eq!(back, status);
+        }
+    }
+
+    #[test]
+    fn verification_status_rejects_unknown() {
+        assert!(VerificationStatus::try_from("banana").is_err());
+    }
+
+    #[test]
+    fn verification_status_default_is_still_pending() {
+        assert_eq!(VerificationStatus::default(), VerificationStatus::Pending);
     }
 }

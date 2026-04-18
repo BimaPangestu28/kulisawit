@@ -195,12 +195,7 @@ pub async fn set_verification(
     status: VerificationStatus,
     output: Option<&str>,
 ) -> DbResult<()> {
-    let status_str = match status {
-        VerificationStatus::Pending => "pending",
-        VerificationStatus::Passed => "passed",
-        VerificationStatus::Failed => "failed",
-        VerificationStatus::Skipped => "skipped",
-    };
+    let status_str = status.as_str();
     let id_str = id.as_str();
     sqlx::query!(
         "UPDATE attempt SET verification_status = ?, verification_output = ? WHERE id = ?",

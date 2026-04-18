@@ -21,6 +21,9 @@ pub enum CoreError {
 
     #[error("unknown attempt status: {0}")]
     UnknownAttemptStatus(#[from] crate::status::UnknownAttemptStatus),
+
+    #[error("unknown verification status: {0}")]
+    UnknownVerificationStatus(#[from] crate::status::UnknownVerificationStatus),
 }
 
 pub type CoreResult<T> = Result<T, CoreError>;
