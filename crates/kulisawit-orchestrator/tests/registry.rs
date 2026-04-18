@@ -29,6 +29,14 @@ fn ids_sorted_alphabetically() {
     assert_eq!(ids, vec!["alpha", "mock", "zeta"]);
 }
 
+#[test]
+fn register_overwrites_on_duplicate_id() {
+    let mut reg = AgentRegistry::new();
+    reg.register(Arc::new(NamedAgent("alpha")) as Arc<dyn AgentAdapter>);
+    reg.register(Arc::new(NamedAgent("alpha")) as Arc<dyn AgentAdapter>);
+    assert_eq!(reg.ids(), vec!["alpha"]);
+}
+
 /// Helper that pretends to be a distinct adapter with a custom id.
 #[derive(Debug)]
 struct NamedAgent(&'static str);

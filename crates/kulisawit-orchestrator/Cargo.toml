@@ -26,9 +26,6 @@ kulisawit-git.workspace = true
 kulisawit-agent.workspace = true
 
 [dev-dependencies]
-async-trait.workspace = true
-futures.workspace = true
-kulisawit-agent.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
