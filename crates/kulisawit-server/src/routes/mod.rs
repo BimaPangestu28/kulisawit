@@ -12,5 +12,6 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .merge(projects::routes())
         .merge(tasks::routes())
+        .merge(attempts::routes())
         .with_state(state)
 }
