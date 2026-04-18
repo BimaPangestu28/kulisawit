@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use kulisawit_core::{adapter::AgentError, CoreError};
+use kulisawit_core::{AgentError, CoreError};
 use kulisawit_db::DbError;
 use kulisawit_git::GitError;
 
