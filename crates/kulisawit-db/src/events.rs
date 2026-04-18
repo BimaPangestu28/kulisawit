@@ -26,7 +26,8 @@ pub async fn append(pool: &DbPool, attempt_id: &AttemptId, event: &AgentEvent) -
     )
     .fetch_one(pool)
     .await?;
-    Ok(row.id.unwrap_or(0))
+    row.id
+        .ok_or_else(|| crate::DbError::Invalid("events.id is NULL from RETURNING".into()))
 }
 
 pub async fn list_for_attempt(pool: &DbPool, attempt_id: &AttemptId) -> DbResult<Vec<AgentEvent>> {
