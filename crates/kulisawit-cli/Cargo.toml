@@ -23,5 +23,8 @@ kulisawit-db.workspace = true
 kulisawit-agent.workspace = true
 kulisawit-orchestrator.workspace = true
 
+[dev-dependencies]
+tempfile.workspace = true
+
 [lints]
 workspace = true
