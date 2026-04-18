@@ -59,3 +59,36 @@ async fn mock_id_and_display_name_are_stable() {
     assert_eq!(k.id(), "mock");
     assert_eq!(k.display_name(), "Mock Agent");
 }
+
+#[tokio::test]
+async fn mock_failing_ends_with_status_failed() {
+    let k = MockAgent::failing();
+    let mut stream = k.run(ctx()).await.expect("run");
+    let mut events = vec![];
+    while let Some(evt) = stream.next().await {
+        events.push(evt);
+    }
+    match events.last().expect("at least one") {
+        AgentEvent::Status { status, .. } => {
+            assert!(matches!(status, kulisawit_core::status::RunStatus::Failed))
+        }
+        other => panic!("expected terminal Failed status, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn mock_cancelling_ends_with_status_cancelled() {
+    let k = MockAgent::cancelling();
+    let mut stream = k.run(ctx()).await.expect("run");
+    let mut events = vec![];
+    while let Some(evt) = stream.next().await {
+        events.push(evt);
+    }
+    match events.last().expect("at least one") {
+        AgentEvent::Status { status, .. } => assert!(matches!(
+            status,
+            kulisawit_core::status::RunStatus::Cancelled
+        )),
+        other => panic!("expected terminal Cancelled status, got {other:?}"),
+    }
+}
