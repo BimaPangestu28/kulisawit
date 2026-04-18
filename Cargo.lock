@@ -755,6 +755,7 @@ name = "kulisawit-db"
 version = "0.1.0-dev"
 dependencies = [
  "chrono",
+ "futures",
  "kulisawit-core",
  "serde",
  "serde_json",
