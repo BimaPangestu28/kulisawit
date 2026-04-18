@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 use uuid::Uuid;
 
 macro_rules! define_id {
@@ -52,6 +53,14 @@ macro_rules! define_id {
         impl AsRef<str> for $name {
             fn as_ref(&self) -> &str {
                 &self.0
+            }
+        }
+
+        impl FromStr for $name {
+            type Err = std::convert::Infallible;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self::from_string(s.to_owned()))
             }
         }
     };
@@ -106,5 +115,12 @@ mod tests {
     fn parse_from_str_accepts_any_non_empty_string() {
         let id = ColumnId::from_string("col-1".to_owned());
         assert_eq!(id.as_str(), "col-1");
+    }
+
+    #[test]
+    fn from_str_roundtrips() {
+        let id: TaskId = "task-abc-123".parse().expect("parse");
+        assert_eq!(id.as_str(), "task-abc-123");
+        assert_eq!(id.to_string(), "task-abc-123");
     }
 }
