@@ -2,6 +2,7 @@
 //!
 //! See the workspace root `README.md` and `docs/PRD.md` for the product brief.
 
+pub mod adapter;
 pub mod error;
 pub mod ids;
 pub mod status;
