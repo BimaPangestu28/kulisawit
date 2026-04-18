@@ -1,3 +1,6 @@
 //! Git worktree management for Kulisawit
-//!
-//! See the workspace root `README.md` and `docs/PRD.md` for the product brief.
+
+pub mod error;
+pub mod worktree;
+
+pub use error::{GitError, GitResult};
