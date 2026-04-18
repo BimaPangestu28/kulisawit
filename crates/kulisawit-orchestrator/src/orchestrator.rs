@@ -108,6 +108,23 @@ impl Orchestrator {
         }
         Ok(())
     }
+
+    /// Produce a shallow clone by re-wrapping inner `Arc`s. The resulting
+    /// value shares the same pool / registry / broadcaster / semaphore /
+    /// cancel-flag map with `self`. Intended for internal fan-out inside
+    /// `dispatch_batch`; callers should not rely on it.
+    pub(crate) fn clone_for_dispatch(&self) -> Self {
+        Self {
+            pool: Arc::clone(&self.pool),
+            registry: Arc::clone(&self.registry),
+            broadcaster: Arc::clone(&self.broadcaster),
+            worktree_root: self.worktree_root.clone(),
+            repo_root: self.repo_root.clone(),
+            semaphore: Arc::clone(&self.semaphore),
+            config: self.config.clone(),
+            cancel_flags: Arc::clone(&self.cancel_flags),
+        }
+    }
 }
 
 #[cfg(test)]
