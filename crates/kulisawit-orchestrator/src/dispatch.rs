@@ -48,13 +48,7 @@ fn short(id: &str) -> String {
 /// remain unique even under high concurrency.
 fn short_attempt(id: &str) -> String {
     let s = id.replace('-', "");
-    s.chars()
-        .rev()
-        .take(12)
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect()
+    s[s.len().saturating_sub(12)..].to_string()
 }
 
 #[instrument(skip(orch), fields(task = %task_id, agent = agent_id))]
@@ -215,4 +209,36 @@ pub async fn dispatch_batch(
         }
     }
     Ok(ids)
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn short_takes_first_eight_chars() {
+        assert_eq!(short("01900000-0000-7000-8000-abcdef012345"), "01900000");
+        assert_eq!(short("abc"), "abc");
+    }
+
+    #[test]
+    fn short_attempt_takes_tail_twelve_chars_excluding_hyphens() {
+        assert_eq!(
+            short_attempt("01900000-0000-7000-8000-abcdef012345"),
+            "abcdef012345"
+        );
+        assert_eq!(
+            short_attempt("019fffff-ffff-7fff-bfff-ffffffffffff"),
+            "ffffffffffff"
+        );
+    }
+
+    #[test]
+    fn short_attempt_of_shorter_input_returns_all_of_it() {
+        // Defensive: saturating_sub means inputs shorter than 12 hex chars
+        // (post-hyphen-strip) return the whole string rather than panicking.
+        assert_eq!(short_attempt("abc"), "abc");
+        assert_eq!(short_attempt("ab-cd"), "abcd");
+    }
 }
