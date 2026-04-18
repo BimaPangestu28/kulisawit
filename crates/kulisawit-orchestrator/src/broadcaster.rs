@@ -12,6 +12,11 @@ use std::sync::Mutex;
 use kulisawit_core::{AgentEvent, AttemptId};
 use tokio::sync::broadcast;
 
+/// Default capacity for per-attempt broadcast channels. When any receiver
+/// falls behind by this many events, the broadcast channel drops the oldest
+/// message. Tune via `RuntimeConfig` once Task 2.1.5 lands.
+const DEFAULT_BROADCAST_CAPACITY: usize = 256;
+
 #[derive(Debug)]
 pub struct EventBroadcaster {
     channels: Mutex<HashMap<String, broadcast::Sender<AgentEvent>>>,
@@ -27,6 +32,11 @@ impl EventBroadcaster {
     }
 
     /// Subscribe to an attempt's event stream. The channel is created on demand.
+    // Rationale: the critical section (HashMap entry + broadcast::channel
+    // construction) cannot panic, so a poisoned mutex would indicate an
+    // unrecoverable bug in a previous caller. Propagating the panic via
+    // `.expect` is intentional — workspace lints deny `expect_used` globally,
+    // hence the narrow local allow.
     #[allow(clippy::expect_used)]
     pub fn subscribe(&self, attempt: &AttemptId) -> broadcast::Receiver<AgentEvent> {
         let mut guard = self.channels.lock().expect("broadcaster mutex poisoned");
@@ -38,6 +48,11 @@ impl EventBroadcaster {
 
     /// Fanout an event. Silently creates a channel if one does not exist.
     /// Drops the event (returns Ok) if no receivers are currently attached.
+    // Rationale: the critical section (HashMap entry + broadcast::channel
+    // construction) cannot panic, so a poisoned mutex would indicate an
+    // unrecoverable bug in a previous caller. Propagating the panic via
+    // `.expect` is intentional — workspace lints deny `expect_used` globally,
+    // hence the narrow local allow.
     #[allow(clippy::expect_used)]
     pub fn send(&self, attempt: &AttemptId, event: AgentEvent) {
         let mut guard = self.channels.lock().expect("broadcaster mutex poisoned");
@@ -49,6 +64,11 @@ impl EventBroadcaster {
 
     /// Drop the channel for the given attempt. Any live receivers will see
     /// the channel close (`recv().await` returns `Err`).
+    // Rationale: the critical section (HashMap entry + broadcast::channel
+    // construction) cannot panic, so a poisoned mutex would indicate an
+    // unrecoverable bug in a previous caller. Propagating the panic via
+    // `.expect` is intentional — workspace lints deny `expect_used` globally,
+    // hence the narrow local allow.
     #[allow(clippy::expect_used)]
     pub fn close(&self, attempt: &AttemptId) {
         let mut guard = self.channels.lock().expect("broadcaster mutex poisoned");
@@ -58,6 +78,6 @@ impl EventBroadcaster {
 
 impl Default for EventBroadcaster {
     fn default() -> Self {
-        Self::new(256)
+        Self::new(DEFAULT_BROADCAST_CAPACITY)
     }
 }
