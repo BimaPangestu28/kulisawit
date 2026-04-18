@@ -58,20 +58,20 @@ macro_rules! define_id {
 }
 
 define_id!(
-    /// Identifier for a `kebun` (tracked repository).
-    KebunId
+    /// Identifier for a `project` (tracked repository).
+    ProjectId
 );
 define_id!(
     /// Identifier for a column on the kanban board.
     ColumnId
 );
 define_id!(
-    /// Identifier for a `lahan` (card/task).
-    LahanId
+    /// Identifier for a `task` (card on the board).
+    TaskId
 );
 define_id!(
-    /// Identifier for a `buah` (single agent run).
-    BuahId
+    /// Identifier for an `attempt` (single agent run).
+    AttemptId
 );
 
 #[cfg(test)]
@@ -81,24 +81,24 @@ mod tests {
 
     #[test]
     fn different_id_types_do_not_compile_interchangeably() {
-        let kebun = KebunId::new();
-        let lahan = LahanId::new();
-        assert_eq!(kebun.as_str().len(), 36);
-        assert_eq!(lahan.as_str().len(), 36);
+        let project = ProjectId::new();
+        let task = TaskId::new();
+        assert_eq!(project.as_str().len(), 36);
+        assert_eq!(task.as_str().len(), 36);
     }
 
     #[test]
     fn ids_roundtrip_through_json() {
-        let id = BuahId::new();
+        let id = AttemptId::new();
         let json = serde_json::to_string(&id).expect("ser");
-        let back: BuahId = serde_json::from_str(&json).expect("de");
+        let back: AttemptId = serde_json::from_str(&json).expect("de");
         assert_eq!(id, back);
     }
 
     #[test]
     fn ids_are_unique_across_calls() {
-        let a = LahanId::new();
-        let b = LahanId::new();
+        let a = TaskId::new();
+        let b = TaskId::new();
         assert_ne!(a, b);
     }
 

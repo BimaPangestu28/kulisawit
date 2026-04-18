@@ -680,6 +680,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "kulisawit-agent"
+version = "0.1.0-dev"
+
+[[package]]
 name = "kulisawit-cli"
 version = "0.1.0-dev"
 dependencies = [
@@ -718,10 +722,6 @@ dependencies = [
 
 [[package]]
 name = "kulisawit-git"
-version = "0.1.0-dev"
-
-[[package]]
-name = "kulisawit-kuli"
 version = "0.1.0-dev"
 
 [[package]]

@@ -2,20 +2,20 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use kulisawit_core::adapter::KuliAdapter;
+use kulisawit_core::adapter::AgentAdapter;
 use std::sync::Arc;
 
 #[test]
-fn kuli_adapter_is_dyn_compatible() {
+fn agent_adapter_is_dyn_compatible() {
     // If this compiles, the trait stays object-safe for the orchestrator's
-    // `Arc<dyn KuliAdapter>` registry.
-    fn _assert_object_safe(_: Arc<dyn KuliAdapter>) {}
+    // `Arc<dyn AgentAdapter>` registry.
+    fn _assert_object_safe(_: Arc<dyn AgentAdapter>) {}
 }
 
 #[test]
-fn kuli_event_serializes_with_tag() {
-    use kulisawit_core::adapter::KuliEvent;
-    let evt = KuliEvent::Stdout {
+fn agent_event_serializes_with_tag() {
+    use kulisawit_core::adapter::AgentEvent;
+    let evt = AgentEvent::Stdout {
         text: "hello".into(),
     };
     let json = serde_json::to_string(&evt).expect("ser");

@@ -1,12 +1,12 @@
 [package]
-name = "kulisawit-kuli"
+name = "kulisawit-agent"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Built-in Kuli adapters for Kulisawit"
+description = "Built-in agent adapters for Kulisawit"
 
 [lib]
 

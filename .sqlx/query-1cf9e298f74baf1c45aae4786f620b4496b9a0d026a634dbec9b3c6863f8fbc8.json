@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, name, repo_path, created_at FROM kebun ORDER BY created_at DESC",
+  "query": "SELECT id, name, repo_path, created_at FROM project ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       false
     ]
   },
-  "hash": "7b3b86e4bab178b4b87bb4f082e2405b946ab01fee381c41dd4ed300baf57a6f"
+  "hash": "1cf9e298f74baf1c45aae4786f620b4496b9a0d026a634dbec9b3c6863f8fbc8"
 }

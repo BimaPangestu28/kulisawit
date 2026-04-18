@@ -1,11 +1,11 @@
-//! Status enums for runs, buah, and sortir.
+//! Status enums for runs, attempts, and verification.
 
 use serde::{Deserialize, Serialize};
 
-/// Lifecycle of a buah from an orchestrator perspective.
+/// Lifecycle of an attempt from an orchestrator perspective.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum BuahStatus {
+pub enum AttemptStatus {
     Queued,
     Running,
     Completed,
@@ -13,7 +13,7 @@ pub enum BuahStatus {
     Cancelled,
 }
 
-impl BuahStatus {
+impl AttemptStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Queued => "queued",
@@ -30,11 +30,11 @@ impl BuahStatus {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("unknown buah status: {0}")]
-pub struct UnknownBuahStatus(pub String);
+#[error("unknown attempt status: {0}")]
+pub struct UnknownAttemptStatus(pub String);
 
-impl TryFrom<&str> for BuahStatus {
-    type Error = UnknownBuahStatus;
+impl TryFrom<&str> for AttemptStatus {
+    type Error = UnknownAttemptStatus;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "queued" => Ok(Self::Queued),
@@ -42,7 +42,7 @@ impl TryFrom<&str> for BuahStatus {
             "completed" => Ok(Self::Completed),
             "failed" => Ok(Self::Failed),
             "cancelled" => Ok(Self::Cancelled),
-            other => Err(UnknownBuahStatus(other.to_owned())),
+            other => Err(UnknownAttemptStatus(other.to_owned())),
         }
     }
 }
@@ -58,10 +58,10 @@ pub enum RunStatus {
     Cancelled,
 }
 
-/// Result of running sortir (verification) commands against a buah.
+/// Result of running verification commands against an attempt.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum SortirStatus {
+pub enum VerificationStatus {
     #[default]
     Pending,
     Passed,
@@ -81,56 +81,56 @@ mod tests {
     }
 
     #[test]
-    fn buah_status_parses_from_db_string() {
+    fn attempt_status_parses_from_db_string() {
         assert_eq!(
-            BuahStatus::try_from("queued").expect("q"),
-            BuahStatus::Queued
+            AttemptStatus::try_from("queued").expect("q"),
+            AttemptStatus::Queued
         );
         assert_eq!(
-            BuahStatus::try_from("running").expect("r"),
-            BuahStatus::Running
+            AttemptStatus::try_from("running").expect("r"),
+            AttemptStatus::Running
         );
         assert_eq!(
-            BuahStatus::try_from("completed").expect("c"),
-            BuahStatus::Completed
+            AttemptStatus::try_from("completed").expect("c"),
+            AttemptStatus::Completed
         );
         assert_eq!(
-            BuahStatus::try_from("failed").expect("f"),
-            BuahStatus::Failed
+            AttemptStatus::try_from("failed").expect("f"),
+            AttemptStatus::Failed
         );
         assert_eq!(
-            BuahStatus::try_from("cancelled").expect("x"),
-            BuahStatus::Cancelled
+            AttemptStatus::try_from("cancelled").expect("x"),
+            AttemptStatus::Cancelled
         );
-        assert!(BuahStatus::try_from("banana").is_err());
+        assert!(AttemptStatus::try_from("banana").is_err());
     }
 
     #[test]
-    fn buah_status_round_trips_to_str() {
+    fn attempt_status_round_trips_to_str() {
         for status in [
-            BuahStatus::Queued,
-            BuahStatus::Running,
-            BuahStatus::Completed,
-            BuahStatus::Failed,
-            BuahStatus::Cancelled,
+            AttemptStatus::Queued,
+            AttemptStatus::Running,
+            AttemptStatus::Completed,
+            AttemptStatus::Failed,
+            AttemptStatus::Cancelled,
         ] {
             let s = status.as_str();
-            let back = BuahStatus::try_from(s).expect("roundtrip");
+            let back = AttemptStatus::try_from(s).expect("roundtrip");
             assert_eq!(back, status);
         }
     }
 
     #[test]
-    fn sortir_status_default_is_pending() {
-        assert_eq!(SortirStatus::default(), SortirStatus::Pending);
+    fn verification_status_default_is_pending() {
+        assert_eq!(VerificationStatus::default(), VerificationStatus::Pending);
     }
 
     #[test]
-    fn buah_status_terminal_flag() {
-        assert!(!BuahStatus::Queued.is_terminal());
-        assert!(!BuahStatus::Running.is_terminal());
-        assert!(BuahStatus::Completed.is_terminal());
-        assert!(BuahStatus::Failed.is_terminal());
-        assert!(BuahStatus::Cancelled.is_terminal());
+    fn attempt_status_terminal_flag() {
+        assert!(!AttemptStatus::Queued.is_terminal());
+        assert!(!AttemptStatus::Running.is_terminal());
+        assert!(AttemptStatus::Completed.is_terminal());
+        assert!(AttemptStatus::Failed.is_terminal());
+        assert!(AttemptStatus::Cancelled.is_terminal());
     }
 }

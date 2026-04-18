@@ -1,3 +1,3 @@
-//! Git worktree (petak) management for Kulisawit
+//! Git worktree management for Kulisawit
 //!
 //! See the workspace root `README.md` and `docs/PRD.md` for the product brief.

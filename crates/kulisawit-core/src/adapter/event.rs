@@ -1,15 +1,15 @@
-//! Events emitted by a kuli while running, plus run-time context types.
+//! Events emitted by an agent while running, plus run-time context types.
 
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::status::RunStatus;
 
-/// Context handed to a kuli for a single run.
+/// Context handed to an agent for a single run.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RunContext {
     pub run_id: String,
-    pub petak_path: PathBuf,
+    pub worktree_path: PathBuf,
     pub prompt: String,
     pub prompt_variant: Option<String>,
     pub env: HashMap<String, String>,
@@ -23,10 +23,10 @@ pub struct CheckResult {
     pub version: Option<String>,
 }
 
-/// Structured events streamed from a running kuli.
+/// Structured events streamed from a running agent.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum KuliEvent {
+pub enum AgentEvent {
     Stdout {
         text: String,
     },

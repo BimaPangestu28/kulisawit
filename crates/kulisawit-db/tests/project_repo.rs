@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use kulisawit_core::KebunId;
-use kulisawit_db::{connect, kebun, migrate};
+use kulisawit_core::ProjectId;
+use kulisawit_db::{connect, migrate, project};
 
 async fn fresh_pool() -> kulisawit_db::DbPool {
     let pool = connect("sqlite::memory:").await.expect("connect");
@@ -12,12 +12,12 @@ async fn fresh_pool() -> kulisawit_db::DbPool {
 #[tokio::test]
 async fn create_then_get_returns_same_row() {
     let pool = fresh_pool().await;
-    let record = kebun::NewKebun {
+    let record = project::NewProject {
         name: "Demo".into(),
         repo_path: "/tmp/demo".into(),
     };
-    let id = kebun::create(&pool, record).await.expect("create");
-    let fetched = kebun::get(&pool, &id).await.expect("get").expect("row");
+    let id = project::create(&pool, record).await.expect("create");
+    let fetched = project::get(&pool, &id).await.expect("get").expect("row");
     assert_eq!(fetched.name, "Demo");
     assert_eq!(fetched.repo_path, "/tmp/demo");
     assert_eq!(fetched.id, id);
@@ -26,9 +26,9 @@ async fn create_then_get_returns_same_row() {
 #[tokio::test]
 async fn list_returns_rows_ordered_by_created_at_desc() {
     let pool = fresh_pool().await;
-    let a = kebun::create(
+    let a = project::create(
         &pool,
-        kebun::NewKebun {
+        project::NewProject {
             name: "A".into(),
             repo_path: "/a".into(),
         },
@@ -37,16 +37,16 @@ async fn list_returns_rows_ordered_by_created_at_desc() {
     .expect("a");
     // Small sleep to guarantee distinct created_at timestamps (second resolution).
     tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
-    let b = kebun::create(
+    let b = project::create(
         &pool,
-        kebun::NewKebun {
+        project::NewProject {
             name: "B".into(),
             repo_path: "/b".into(),
         },
     )
     .await
     .expect("b");
-    let rows = kebun::list(&pool).await.expect("list");
+    let rows = project::list(&pool).await.expect("list");
     assert_eq!(rows.len(), 2);
     // b was created later → comes first.
     assert_eq!(rows[0].id, b);
@@ -56,6 +56,6 @@ async fn list_returns_rows_ordered_by_created_at_desc() {
 #[tokio::test]
 async fn get_missing_returns_none() {
     let pool = fresh_pool().await;
-    let result = kebun::get(&pool, &KebunId::new()).await.expect("ok");
+    let result = project::get(&pool, &ProjectId::new()).await.expect("ok");
     assert!(result.is_none());
 }

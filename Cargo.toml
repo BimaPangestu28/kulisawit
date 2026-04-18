@@ -6,7 +6,7 @@ members = [
     "crates/kulisawit-db",
     "crates/kulisawit-git",
     "crates/kulisawit-server",
-    "crates/kulisawit-kuli",
+    "crates/kulisawit-agent",
 ]
 
 [workspace.package]
@@ -62,7 +62,7 @@ kulisawit-core   = { path = "crates/kulisawit-core",   version = "0.1.0-dev" }
 kulisawit-db     = { path = "crates/kulisawit-db",     version = "0.1.0-dev" }
 kulisawit-git    = { path = "crates/kulisawit-git",    version = "0.1.0-dev" }
 kulisawit-server = { path = "crates/kulisawit-server", version = "0.1.0-dev" }
-kulisawit-kuli   = { path = "crates/kulisawit-kuli",   version = "0.1.0-dev" }
+kulisawit-agent  = { path = "crates/kulisawit-agent",  version = "0.1.0-dev" }
 
 [profile.release]
 opt-level = 3

@@ -19,8 +19,8 @@ pub enum CoreError {
     #[error("serialization error: {0}")]
     Serialize(#[from] serde_json::Error),
 
-    #[error("unknown buah status: {0}")]
-    UnknownBuahStatus(#[from] crate::status::UnknownBuahStatus),
+    #[error("unknown attempt status: {0}")]
+    UnknownAttemptStatus(#[from] crate::status::UnknownAttemptStatus),
 }
 
 pub type CoreResult<T> = Result<T, CoreError>;
