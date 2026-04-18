@@ -71,6 +71,12 @@ async fn shutdown_signal() {
     tracing::info!("shutdown signal received");
 }
 
+/// Construct the router for integration tests. Bypasses the bind/listen steps
+/// of [`serve`] so a test can exercise handlers with `tower::ServiceExt::oneshot`.
+pub fn routes_for_testing(state: AppState) -> axum::Router {
+    routes::router(state)
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::panic)]
 mod lib_tests {
