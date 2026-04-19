@@ -343,11 +343,63 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## Roadmap
 
-_Filled in Task 9._
+Kulisawit follows a 6-phase plan toward v0.1 launch. Each completed phase is tagged in git on the `main` branch.
+
+| Phase | Scope | Status | Tag |
+|---|---|---|---|
+| 1 | Foundation | ✅ Done | `phase-1` |
+| 2 | Orchestrator + CLI `run` | ✅ Done | `phase-2` |
+| 3.1 | HTTP + SSE server | ✅ Done | `phase-3.1` |
+| 3.2 | React UI minimum | 🚧 Next | — |
+| 3.3 | Sortir runner + panen merge | ⏳ Planned | — |
+| 4 | Adapter ecosystem | ⏳ Planned | — |
+| 5 | Single-binary release | ⏳ Planned | — |
+| 6 | v0.1 launch polish | ⏳ Planned | — |
+
+- **Now (April 2026):** Phase 3.2 — React UI minimum: kanban board, lahan detail panel, per-buah SSE log viewer.
+- **Next:** Phase 3.3 (sortir runner + panen merge), then Phase 4 (additional kuli adapters: Codex, Aider, Gemini CLI).
+- **v0.1 launch target:** Q3 2026 (calendar TBD; PRD §13 estimates a 6-week MVP from the start of UI work).
+
+**Post-v0.1 exploration** (PRD §3.2 / §3.3, marked clearly speculative):
+
+- Timeline scrubbing per buah (replay mode)
+- Fork-from-step: branch execution from a mid-point with new instructions
+- WASM plugin system for custom sortir runners and context providers
+- MCP server integration as a context source
+- Auto-context: embed repo files, surface relevant ones per lahan
+
+Detailed plans live in [`docs/superpowers/plans/`](docs/superpowers/plans/) — one design doc per phase.
 
 ## Contributing
 
-_Filled in Task 9._
+Kulisawit is solo-built by [@BimaPangestu28](https://github.com/BimaPangestu28) but designed for outside contribution from day one.
+
+**Three high-leverage areas:**
+
+1. **New kuli adapter.** Implement the adapter trait in `crates/kulisawit-agent`. Required: subprocess lifecycle (spawn, stream stdout/stderr, capture exit), structured event emission (tool calls, status transitions), error mapping into `AgentError`. Wishlist: Codex CLI, Aider, Gemini CLI, Cursor agent. Reference: the mock adapter (`mock_stream` test binary) shows the trait contract; a Claude Code adapter is the next planned reference impl.
+2. **New sortir runner.** Phase 3.3 will define the sortir hook contract (test/lint/build commands run after each buah). Once that lands, ecosystem-specific runners (pytest, jest, golangci-lint, mypy) are direct contributions.
+3. **Bug reports, naming, and docs.** File issues for anything broken or unclear. Plantation-metaphor naming suggestions for new concepts are explicitly welcome — better Indonesian terms for existing PRD entries especially.
+
+**Dev workflow**
+
+```bash
+# fork on GitHub, then
+git clone https://github.com/<your-username>/kulisawit
+cd kulisawit
+git remote add upstream https://github.com/BimaPangestu28/kulisawit.git
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+# branch, commit, push, open a pull request
+```
+
+**Code style**
+
+- `rustfmt` defaults (no overrides); `cargo fmt --all` before committing.
+- Naming convention per PRD §0: English code identifiers, Kulisawit terms in user-facing strings only.
+- No `unwrap()` / `expect()` / `panic!()` in non-test code (workspace lints enforce this; tests opt in with `#[allow(...)]` plus a rationale comment when the reason isn't obvious).
+- Commits: Conventional Commits (`feat(scope): …`, `fix(scope): …`, `docs(scope): …`).
+
+A formal `CONTRIBUTING.md` lands closer to v0.1. For now, ask in Issues if anything's unclear.
 
 ## Documentation Index
 
