@@ -1055,6 +1055,7 @@ dependencies = [
  "kulisawit-core",
  "kulisawit-db",
  "kulisawit-orchestrator",
+ "kulisawit-server",
  "tempfile",
  "tokio",
  "tracing",

@@ -22,6 +22,7 @@ kulisawit-core.workspace = true
 kulisawit-db.workspace = true
 kulisawit-agent.workspace = true
 kulisawit-orchestrator.workspace = true
+kulisawit-server.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -21,6 +21,10 @@ fn help_lists_version_and_run_subcommands() {
         "help missing 'version': {combined}"
     );
     assert!(combined.contains("run"), "help missing 'run': {combined}");
+    assert!(
+        combined.contains("serve"),
+        "help missing 'serve': {combined}"
+    );
 }
 
 #[test]
