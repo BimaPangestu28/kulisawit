@@ -5,6 +5,8 @@
 //! - [`serve`] — bind, wire an `Orchestrator`, run until Ctrl-C.
 //! - [`serve_with_shutdown`] — same, with a caller-supplied future that
 //!   completes to signal graceful shutdown. Used by integration tests.
+//! - [`serve_with_shutdown_ready`] — same, plus a oneshot that fires once the
+//!   listener is bound. Tests use this to learn the ephemeral port.
 
 pub mod error;
 pub mod state;
@@ -23,13 +25,16 @@ use kulisawit_core::AgentAdapter;
 use kulisawit_db::{connect, migrate};
 use kulisawit_orchestrator::{AgentRegistry, Orchestrator};
 
-/// Bind the HTTP server and run until Ctrl-C.
-pub async fn serve(config: ServeConfig) -> ServerResult<SocketAddr> {
-    serve_with_shutdown(config, shutdown_signal()).await
-}
-
-/// Same as [`serve`] but accepts an external shutdown future.
-pub async fn serve_with_shutdown<S>(config: ServeConfig, shutdown: S) -> ServerResult<SocketAddr>
+/// Same as [`serve`] but accepts an external shutdown future and emits the
+/// bound `SocketAddr` via a `oneshot::Sender` once the listener is ready.
+///
+/// Tests use this to learn the ephemeral port (bind to 0, read the actual
+/// port back). Production code calls [`serve`] which doesn't care.
+pub async fn serve_with_shutdown_ready<S>(
+    config: ServeConfig,
+    shutdown: S,
+    ready_tx: Option<tokio::sync::oneshot::Sender<SocketAddr>>,
+) -> ServerResult<SocketAddr>
 where
     S: std::future::Future<Output = ()> + Send + 'static,
 {
@@ -58,12 +63,27 @@ where
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
     let local_addr = listener.local_addr()?;
     tracing::info!(addr = %local_addr, "kulisawit server listening");
+    if let Some(tx) = ready_tx {
+        let _ = tx.send(local_addr);
+    }
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown)
         .await?;
 
     Ok(local_addr)
+}
+
+pub async fn serve_with_shutdown<S>(config: ServeConfig, shutdown: S) -> ServerResult<SocketAddr>
+where
+    S: std::future::Future<Output = ()> + Send + 'static,
+{
+    serve_with_shutdown_ready(config, shutdown, None).await
+}
+
+/// Bind the HTTP server and run until Ctrl-C.
+pub async fn serve(config: ServeConfig) -> ServerResult<SocketAddr> {
+    serve_with_shutdown(config, shutdown_signal()).await
 }
 
 async fn shutdown_signal() {
