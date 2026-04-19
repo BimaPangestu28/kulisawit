@@ -32,14 +32,19 @@ enum Command {
 
 #[derive(Debug, clap::Args)]
 pub struct RunArgs {
+    /// Path to the SQLite database. Will be created if missing.
     #[arg(long)]
     pub db: PathBuf,
+    /// Path to the git repository hosting the task.
     #[arg(long)]
     pub repo: PathBuf,
+    /// Task id (`TaskId` string).
     #[arg(long)]
     pub task: TaskId,
+    /// Registered agent id.
     #[arg(long, default_value = "mock")]
     pub agent: String,
+    /// Number of parallel attempts.
     #[arg(long, default_value_t = 1)]
     pub batch: usize,
 }
