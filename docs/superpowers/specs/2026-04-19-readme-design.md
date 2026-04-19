@@ -108,17 +108,25 @@ cargo build --release
 **Verify** (separate fenced block):
 ```bash
 # Create a project pointing at your repo
-curl -X POST http://localhost:7700/api/projects \
+curl -sX POST http://localhost:7700/api/projects \
   -H 'content-type: application/json' \
   -d '{"name":"demo","repo_path":"/path/to/your/repo"}'
+# → {"id":"<project-id>", "name":"demo", "repo_path":"...", "created_at":...}
 
-# Create a task
-curl -X POST http://localhost:7700/api/projects/<project-id>/tasks \
+# Create a task on a column (column IDs are seeded with the project)
+curl -sX POST http://localhost:7700/api/tasks \
   -H 'content-type: application/json' \
-  -d '{"title":"hello","description":"say hi"}'
+  -d '{"project_id":"<project-id>","column_id":"<column-id>","title":"hello"}'
+# → {"id":"<task-id>", ...}
 
-# Stream attempt events (after dispatch)
-curl -N http://localhost:7700/api/attempts/<attempt-id>/events
+# Plant a tandan of attempts (the mock agent is registered for testing)
+curl -sX POST http://localhost:7700/api/tasks/<task-id>/dispatch \
+  -H 'content-type: application/json' \
+  -d '{"agent":"mock","batch":2}'
+# → {"attempt_ids":["<id-1>", "<id-2>"]}
+
+# Stream attempt events
+curl -N http://localhost:7700/api/attempts/<id-1>/events
 ```
 
 **Note** (callout): "No CLI subcommands for `tanam` / `panen` yet — only `serve`. Drive the server via HTTP API directly while Phase 3.2 (UI) is in flight."
@@ -189,7 +197,7 @@ After the table, add naming-convention callout:
 |---|---|---|
 | F1 | Kebun init from any git repo | ✅ |
 | F2 | Kanban board (default columns) | ⏳ |
-| F3 | Lahan CRUD (title, description, tags, files) | ✅ (no `tags` / `files` yet) |
+| F3 | Lahan CRUD (title, description, tags, linked files) | ✅ create + fetch (no list endpoint yet) |
 | F4 | Single buah execution with worktree isolation | ✅ |
 | F5 | Live SSE streaming of kuli output | ✅ |
 | F6 | Tandan: N parallel buah on one lahan | ✅ |
@@ -209,20 +217,21 @@ Three subsections (`### Projects (kebun)`, `### Tasks (lahan)`, `### Attempts (b
 For each endpoint, present as `#### METHOD /path` heading + 1-paragraph description + fenced request example + fenced response shape (TypeScript-ish or JSON skeleton).
 
 **Projects**:
-- `POST /api/projects` — create project from local repo path. Validates repo is a git directory.
-- `GET /api/projects` — list all projects.
-- `GET /api/projects/:id` — fetch one.
+- `POST /api/projects` — create project from local repo path. Body: `{name: string, repo_path: string}`. Returns `ProjectResponse` with `id, name, repo_path, created_at`.
+- `GET /api/projects/:id` — fetch one project.
 
 **Tasks**:
-- `POST /api/projects/:id/tasks` — create task on a project.
-- `GET /api/projects/:id/tasks` — list tasks for a project.
-- `POST /api/tasks/:id/dispatch` — plant N attempts (request body: `{count: number}`). Returns attempt IDs immediately; agents run detached via `tokio::spawn`.
+- `POST /api/tasks` — create task. Body: `{project_id, column_id, title, description?, tags?: string[], linked_files?: string[]}`. Returns `TaskResponse`.
+- `GET /api/tasks/:id` — fetch one task.
+- `POST /api/tasks/:id/dispatch` — plant a tandan of N attempts. Body: `{agent: string, batch: number, variants?: string[]}`. Returns `{attempt_ids: AttemptId[]}` immediately; agents run detached via `tokio::spawn`.
 
 **Attempts**:
-- `GET /api/attempts/:id` — current state snapshot.
-- `GET /api/attempts/:id/events` — SSE stream. Event kinds: `status` (RunStatus changes), `tool_call`, `stdout` chunks, `terminal_close` (stream end). Server replays events from DB on connect, then streams live from broadcast channel until terminal status, then closes.
+- `GET /api/attempts/:id` — current state snapshot. Returns `AttemptResponse` with `id, task_id, agent_id, status, prompt_variant, worktree_path, branch_name, started_at, completed_at`.
+- `GET /api/attempts/:id/events` — SSE stream of `AgentEvent`s. Server replays past events from `events` table on connect, then streams live from the broadcast channel until terminal status, then closes the stream.
 
-Cross-reference for response shapes: "All response shapes mirror types in `crates/kulisawit-core/src/`. See `Project`, `Task`, `Attempt`, `AttemptEvent`, `AttemptStatus`, `RunStatus`."
+Cross-reference for response shapes: "All response shapes mirror types in `crates/kulisawit-core/src/` and `crates/kulisawit-server/src/wire.rs`. See `Project`, `Task`, `Attempt`, `AgentEvent`, `AttemptStatus`, `DispatchRequest`, `DispatchResponse`."
+
+> **No listing endpoints yet.** `GET /api/projects` (all projects) and `GET /api/projects/:id/tasks` (tasks for project) are not implemented in Phase 3.1; they're planned for Phase 3.2 once the UI needs them.
 
 ### 4.9 Database Schema Summary
 
@@ -232,12 +241,13 @@ Per-table summary (columns: Table, Purpose, Key columns, Foreign keys):
 
 | Table | Purpose | Key columns | Foreign keys |
 |---|---|---|---|
-| `projects` | Tracked git repos (kebun) | `id`, `name`, `repo_path`, `created_at` | — |
-| `tasks` | Work units (lahan) | `id`, `project_id`, `title`, `description`, `status`, `created_at` | `project_id → projects(id)` |
-| `attempts` | Single agent runs (buah) | `id`, `task_id`, `worktree_path`, `status`, `started_at`, `finished_at` | `task_id → tasks(id)` |
-| `attempt_events` | Per-attempt event log (replay source for SSE) | `id`, `attempt_id`, `event_kind`, `payload_json`, `seq`, `created_at` | `attempt_id → attempts(id)` |
+| `project` | Tracked git repos (kebun) | `id`, `name`, `repo_path`, `created_at` | — |
+| `columns` | Kanban columns per project | `id`, `project_id`, `name`, `position` | `project_id → project(id)` |
+| `task` | Work units (lahan) | `id`, `project_id`, `column_id`, `title`, `description`, `position`, `tags` (JSON array), `linked_files` (JSON array), `created_at`, `updated_at` | `project_id → project(id)`, `column_id → columns(id)` |
+| `attempt` | Single agent runs (buah) | `id`, `task_id`, `agent_id`, `prompt_variant`, `worktree_path`, `branch_name`, `status` (queued / running / completed / failed / cancelled), `started_at`, `completed_at`, `verification_status`, `verification_output` | `task_id → task(id)` |
+| `events` | Per-attempt event log (replay source for SSE) | `id` (autoincrement), `attempt_id`, `timestamp`, `type`, `payload` (JSON) | `attempt_id → attempt(id)` |
 
-Footer: "Indexes and exact column types are in `migrations/`. Check there for ground truth."
+Footer: "Indexes, exact column types, and CHECK constraints live in [`migrations/0001_initial.sql`](migrations/0001_initial.sql). That file is the ground truth."
 
 ### 4.10 Testing
 
@@ -245,17 +255,17 @@ Intro: "**110 tests passing** across the workspace as of Phase 3.1 (tag `phase-3
 
 Breakdown table (columns: Crate, Tests, Categories present):
 
-| Crate | Tests (approx) | Categories |
+| Crate | Tests | Categories |
 |---|---|---|
-| `-core` | unit | type roundtrips, serde |
-| `-db` | unit + integration | repo fns against tempfile SQLite |
-| `-git` | integration | real `git2` repos in tempdirs |
-| `-orchestrator` | unit + integration | dispatch lifecycle, broadcast |
-| `-server` | integration + e2e | axum router, reqwest e2e on ephemeral port |
-| `-agent` | unit | adapter trait contract |
-| `-cli` | smoke | `serve` boot |
+| `kulisawit-core` | 19 | unit: type roundtrips, serde, ID newtypes |
+| `kulisawit-db` | 22 | unit + integration: repo fns against tempfile SQLite, migrations, concurrent inserts |
+| `kulisawit-git` | 7 | integration: real `git2` repos in tempdirs (worktree create / list / remove, branch + commit) |
+| `kulisawit-orchestrator` | 35 | unit + integration: dispatch lifecycle, broadcast, cancellation, prompt rendering, agent registry |
+| `kulisawit-server` | 19 | integration + e2e: axum router, request validation, SSE replay+live, reqwest end-to-end on ephemeral port |
+| `kulisawit-agent` | 5 | unit: adapter trait object-safety, mock stream contract |
+| `kulisawit-cli` | 3 | smoke: `--help` rendering, `kulisawit run` argument parsing |
 
-(Exact per-crate counts updated when README is written; aggregate is 110.)
+Aggregate: **110**.
 
 **Test categories**:
 - **Unit** — co-located in `src/` files via `#[cfg(test)] mod tests`.
@@ -386,8 +396,15 @@ Three short paragraphs:
 
 ## 7. Open Questions for Implementation Plan
 
-1. Confirm test-count breakdown per crate (current: 110 aggregate; per-crate split needed for §4.10 table).
-2. Confirm exact column names in `attempt_events` table (`payload_json` vs `payload` vs `data`) by checking migrations.
-3. Confirm `POST /api/tasks/:id/dispatch` request body shape (`{count: number}` is design assumption; verify against `kulisawit-server` handler).
-4. Decide whether to create `LICENSE-MIT` and `LICENSE-APACHE` files in the same PR or as a follow-up.
-5. Fix `Cargo.toml` `workspace.package.repository` from `https://github.com/bimapangestu/kulisawit` to `https://github.com/BimaPangestu28/kulisawit` in the same PR (the current URL 404s).
+All open questions from the original spec have been resolved during plan-writing fact-finding (2026-04-19):
+
+1. ✅ Per-crate test counts: agent=5, cli=3, core=19, db=22, git=7, orchestrator=35, server=19 (aggregate 110). Reflected in §4.10.
+2. ✅ Schema corrected against `migrations/0001_initial.sql`: tables are singular (`project`, `task`, `attempt`), kanban `columns` table exists, event table is `events` (not `attempt_events`), columns are `type` + `payload` (not `event_kind` + `payload_json`). Reflected in §4.9.
+3. ✅ Dispatch body shape confirmed against `crates/kulisawit-server/src/wire.rs`: `{agent: string, batch: usize, variants?: string[]}`. Reflected in §4.4 and §4.8.
+4. **Decision**: create `LICENSE-MIT` and `LICENSE-APACHE` files in the same PR as the README. The README references them; shipping the README without them would break the link.
+5. **Decision**: fix `Cargo.toml` `workspace.package.repository` to `https://github.com/BimaPangestu28/kulisawit` in the same PR. The README quickstart points to the correct URL; leaving Cargo.toml stale would be inconsistent.
+
+Additional corrections caught during fact-finding (already applied to the spec above):
+- Only 7 HTTP endpoints exist in Phase 3.1, not 8. No `GET /api/projects` listing, no `GET /api/projects/:id/tasks` listing. Task creation is `POST /api/tasks` (flat), not nested under project.
+- Task table already has `tags` and `linked_files` JSON columns (spec previously claimed they were missing).
+- Workspace has 7 crates total (architecture intro previously said 6).
