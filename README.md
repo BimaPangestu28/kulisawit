@@ -75,15 +75,91 @@ curl -N http://localhost:7700/api/attempts/<id-1>/events
 
 ## Architecture
 
-_Filled in Task 6._
+Kulisawit is a Cargo workspace of 7 crates plus an embedded React UI (post-Phase 3.2). The CLI is the binary entry point; the orchestrator owns task lifecycle; the server exposes both over HTTP+SSE; lower crates wrap SQLite, git, and agent subprocesses.
+
+```text
+┌─────────────────────────────────────────────┐
+│  kulisawit-cli  (binary entrypoint, clap)   │
+└──────┬──────────────────────────┬───────────┘
+       │                          │
+       ▼                          ▼
+┌─────────────┐         ┌──────────────────┐
+│  -server    │◄────────┤  -orchestrator   │
+│  (axum+SSE) │         │  (dispatch_batch)│
+└──────┬──────┘         └──┬──────────┬────┘
+       │                   │          │
+       ▼                   ▼          ▼
+┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
+│  -db   │  │  -git  │  │ -agent │  │ -core  │
+│ (sqlx) │  │ (git2) │  │ (kuli) │  │(types) │
+└────────┘  └────────┘  └────────┘  └────────┘
+```
+
+| Crate | Responsibility | Key deps | Status |
+|---|---|---|---|
+| `kulisawit-cli` | Binary entry point, clap subcommand parsing, in-process server launcher | clap, tokio | ✅ `serve` only |
+| `kulisawit-server` | axum HTTP + SSE, request validation, response shaping | axum, tower-http | ✅ Phase 3.1 |
+| `kulisawit-orchestrator` | Dispatch logic, attempt lifecycle, broadcast event channels | tokio, broadcast | ✅ Phase 2 |
+| `kulisawit-agent` | Kuli adapter trait + mock reference impl (subprocess management forthcoming) | tokio process | 🚧 trait + mock only |
+| `kulisawit-db` | sqlx pool, migrations, repository functions for project / task / attempt / events | sqlx | ✅ Phase 1 |
+| `kulisawit-git` | git2 wrappers for worktree create/list/remove and branch+commit ops | git2 | ✅ Phase 1 |
+| `kulisawit-core` | Shared domain types (`Project`, `Task`, `Attempt`, `AgentEvent`, `AttemptStatus`, `RunStatus`, `AttemptId`, `ProjectId`, `TaskId`, `ColumnId`) | serde, uuid, chrono | ✅ Phase 1 |
+
+Status legend: ✅ shipped · 🚧 partial / in progress · ⏳ planned.
 
 ## Plantation Glossary
 
-_Filled in Task 6._
+Kulisawit uses a plantation metaphor consistently throughout the codebase, UI, and documentation. This is intentional branding. Contributors must preserve this vocabulary in user-facing surfaces.
+
+| Technical concept | Kulisawit term | Meaning |
+|---|---|---|
+| Project | Kebun | Plantation (a git repo tracked by Kulisawit) |
+| Card / task | Lahan | Plot of land (a unit of work) |
+| Parallel attempts group | Tandan | Fruit cluster (N parallel attempts on one lahan) |
+| Single attempt | Buah | Fruit (one agent execution) |
+| Agent worker | Kuli | Worker (an AI agent running inside a buah) |
+| Run attempts | Tanam | Plant (trigger execution) |
+| Verification step | Sortir | Sorting (post-run checks) |
+| Merge winning attempt | Panen | Harvest (merge selected buah to main) |
+| Worktree directory | Petak | Land parcel (isolated git worktree) |
+| Config file | Peta kebun | Plantation map |
+| Daemon process | Mandor | Foreman (the orchestrator daemon) |
+| Event log | Buku kuli | Worker's log |
+| Garbage collection | Bersihkan | Cleanup |
+
+> **Naming convention.** Code identifiers use English (`task`, `attempt`, `worktree`); user-facing strings (CLI output, UI labels, future docs) use Kulisawit terms (`lahan`, `buah`, `petak`). This separation keeps internals readable for international contributors while preserving the brand in UX.
 
 ## Feature Matrix
 
-_Filled in Task 6._
+**Phase progress** (each completed phase is annotated with a git tag):
+
+| Phase | Scope | Status | Tag |
+|---|---|---|---|
+| 1 | Foundation: workspace, db migrations, git ops | ✅ Done | `phase-1` |
+| 2 | Orchestrator + CLI `run` | ✅ Done | `phase-2` |
+| 3.1 | HTTP + SSE server | ✅ Done | `phase-3.1` |
+| 3.2 | React UI minimum (kanban + diff viewer) | 🚧 Next | — |
+| 3.3 | Sortir runner + panen merge | ⏳ Planned | — |
+| 4 | Adapter ecosystem (Codex, Aider, Gemini) | ⏳ Planned | — |
+| 5 | Single-binary release (cargo-dist) | ⏳ Planned | — |
+| 6 | v0.1 launch polish | ⏳ Planned | — |
+
+**Per-feature** status (PRD §3.1 F1–F12):
+
+| ID | Feature | Status |
+|---|---|---|
+| F1 | Kebun init from any git repo | ✅ |
+| F2 | Kanban board (default columns) | ⏳ |
+| F3 | Lahan CRUD (title, description, tags, linked files) | ✅ create + fetch (no list endpoint yet) |
+| F4 | Single buah execution with worktree isolation | ✅ |
+| F5 | Live SSE streaming of kuli output | ✅ |
+| F6 | Tandan: N parallel buah on one lahan | ✅ |
+| F7 | Side-by-side diff view across buah | ⏳ |
+| F8 | Claude Code adapter (reference) | 🚧 stub |
+| F9 | Sortir hooks (test/lint/build commands) | ⏳ |
+| F10 | Panen: merge winning buah to main | ⏳ |
+| F11 | SQLite persistence | ✅ |
+| F12 | Single-binary install with embedded UI | ⏳ |
 
 ## HTTP API Catalog
 
