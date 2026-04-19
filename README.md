@@ -305,11 +305,41 @@ Indexes, exact column types, and CHECK constraints live in [`migrations/0001_ini
 
 ## Testing
 
-_Filled in Task 8._
+**110 tests passing** across the workspace as of tag `phase-3.1`.
+
+| Crate | Tests | Categories |
+|---|---|---|
+| `kulisawit-core` | 19 | unit: type roundtrips, serde, ID newtypes |
+| `kulisawit-db` | 22 | unit + integration: repo functions against tempfile SQLite, migrations, concurrent inserts |
+| `kulisawit-git` | 7 | integration: real `git2` repos in tempdirs (worktree create / list / remove, branch + commit) |
+| `kulisawit-orchestrator` | 35 | unit + integration: dispatch lifecycle, broadcast, cancellation, prompt rendering, agent registry |
+| `kulisawit-server` | 19 | integration + e2e: axum router, request validation, SSE replay+live, reqwest end-to-end on ephemeral port |
+| `kulisawit-agent` | 5 | unit: adapter trait object-safety, mock stream contract |
+| `kulisawit-cli` | 3 | smoke: `--help` rendering, `kulisawit run` argument parsing |
+
+**Test categories:**
+
+- **Unit** — co-located in `src/` files via `#[cfg(test)] mod tests`.
+- **Integration** — in `tests/` per crate; hit real SQLite tempfiles and real `git2` repos in tempdirs. No mocks for the DB or for git.
+- **End-to-end** — `crates/kulisawit-server/tests/e2e.rs` spins the server on an ephemeral port via a oneshot ready channel, drives the full task lifecycle with `reqwest`, and drains SSE to terminal close.
+
+**Lints**
+
+Workspace-level lints **deny** `clippy::unwrap_used`, `clippy::expect_used`, and `clippy::panic` in production code. Tests opt in via `#[allow(clippy::expect_used)]` at function or module scope, with a `// Rationale: ...` comment when the rationale isn't obvious.
+
+**How to run**
+
+```bash
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+```
 
 ## Release Plan
 
-_Filled in Task 8._
+- **Goal:** single static binary ~15 MB via [`cargo-dist`](https://github.com/axodotdev/cargo-dist), embedded React UI via `rust-embed` (wired in Phase 5).
+- **Targets:** `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`. macOS Intel and Linux ARM64 considered for v0.1+.
+- **Distribution:** GitHub Releases plus a `curl | sh` install script. Explicitly **not shipping** to npm, brew, or apt for v0.1.
+- **Status:** not wired yet. `cargo build --release` produces a working ~12 MB stripped server binary today; UI embed will increase the size once Phase 3.2 + Phase 5 land.
 
 ## Roadmap
 
