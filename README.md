@@ -163,11 +163,145 @@ Kulisawit uses a plantation metaphor consistently throughout the codebase, UI, a
 
 ## HTTP API Catalog
 
-_Filled in Task 7._
+Phase 3.1 ships a JSON HTTP API plus one SSE stream under `/api`. All endpoints are local-only — **no auth, no rate limiting, no CORS preflight** beyond the default. Endpoint shapes are stable within Phase 3.1 but may change before v0.1.
+
+> **Heads-up: no listing endpoints yet.** `GET /api/projects` (all projects) and `GET /api/projects/:id/tasks` (tasks for a project) are not implemented in Phase 3.1; they're planned for Phase 3.2 once the UI needs them. Read directly from the SQLite database for bulk queries until then.
+
+### Projects (kebun)
+
+#### `POST /api/projects`
+
+Create a project pointing at a local git repo.
+
+```json
+// Request
+{"name": "demo", "repo_path": "/abs/path/to/repo"}
+
+// Response 200
+{"id": "<ProjectId>", "name": "demo", "repo_path": "/abs/path/to/repo", "created_at": 1745000000}
+```
+
+#### `GET /api/projects/:id`
+
+Fetch a single project by ID.
+
+```json
+// Response 200
+{"id": "<ProjectId>", "name": "demo", "repo_path": "/abs/path/to/repo", "created_at": 1745000000}
+
+// Response 404 if no project with that ID
+```
+
+### Tasks (lahan)
+
+#### `POST /api/tasks`
+
+Create a task in a column. `tags` and `linked_files` default to empty arrays.
+
+```json
+// Request
+{
+  "project_id": "<ProjectId>",
+  "column_id": "<ColumnId>",
+  "title": "Refactor parser",
+  "description": "Optional",
+  "tags": ["refactor", "parser"],
+  "linked_files": ["src/parser.rs"]
+}
+
+// Response 200
+{
+  "id": "<TaskId>",
+  "project_id": "<ProjectId>",
+  "column_id": "<ColumnId>",
+  "title": "Refactor parser",
+  "description": "Optional",
+  "position": 0,
+  "tags": ["refactor", "parser"],
+  "linked_files": ["src/parser.rs"],
+  "created_at": 1745000000,
+  "updated_at": 1745000000
+}
+```
+
+#### `GET /api/tasks/:id`
+
+Fetch a single task.
+
+#### `POST /api/tasks/:id/dispatch`
+
+Plant a tandan of N attempts on a task. Returns immediately with attempt IDs; the kuli runs detach via `tokio::spawn`.
+
+```json
+// Request
+{"agent": "mock", "batch": 3, "variants": ["aggressive", "conservative", "default"]}
+// `variants` is optional. When supplied, length must equal `batch`; each
+// attempt uses the variant at the matching index for prompt rendering.
+
+// Response 200
+{"attempt_ids": ["<AttemptId>", "<AttemptId>", "<AttemptId>"]}
+```
+
+### Attempts (buah)
+
+#### `GET /api/attempts/:id`
+
+Snapshot of an attempt's current state.
+
+```json
+// Response 200
+{
+  "id": "<AttemptId>",
+  "task_id": "<TaskId>",
+  "agent_id": "mock",
+  "status": "running",
+  "prompt_variant": "aggressive",
+  "worktree_path": "/abs/path/to/repo/.kulisawit/worktrees/<id>",
+  "branch_name": "kulisawit/<id>",
+  "started_at": 1745000000,
+  "completed_at": null
+}
+```
+
+`status` is one of `queued`, `running`, `completed`, `failed`, `cancelled`.
+
+#### `GET /api/attempts/:id/events`
+
+Server-Sent Events stream of `AgentEvent`s for one attempt.
+
+- On connect, the server replays past events from the `events` table.
+- After the replay, it streams live events from the broadcast channel.
+- On terminal status (`completed` / `failed` / `cancelled`), the broadcast channel closes and the SSE stream ends. Clients should treat stream close as a reliable signal that DB state is final.
+
+```text
+# Curl example
+curl -N http://localhost:7700/api/attempts/<AttemptId>/events
+
+# Sample frames (each is one SSE event)
+data: {"type":"status","status":"running","at":1745000000}
+
+data: {"type":"stdout","chunk":"compiling..."}
+
+data: {"type":"status","status":"completed","at":1745000005}
+```
+
+### Response shape reference
+
+All response shapes mirror types in `crates/kulisawit-core/src/` and `crates/kulisawit-server/src/wire.rs`. Read those files for ground truth: `Project`, `Task`, `Attempt`, `AgentEvent`, `AttemptStatus`, `DispatchRequest`, `DispatchResponse`.
 
 ## Database Schema
 
-_Filled in Task 7._
+SQLite via `sqlx`. Migrations live in [`migrations/`](migrations/). All primary keys are UUID v7 stored as `TEXT`. `kulisawit serve --db <path>` runs migrations on startup against the target file (creating it if absent).
+
+| Table | Purpose | Key columns | Foreign keys |
+|---|---|---|---|
+| `project` | Tracked git repos (kebun) | `id`, `name`, `repo_path`, `created_at` | — |
+| `columns` | Kanban columns per project | `id`, `project_id`, `name`, `position` | `project_id → project(id)` |
+| `task` | Work units (lahan) | `id`, `project_id`, `column_id`, `title`, `description`, `position`, `tags` (JSON array), `linked_files` (JSON array), `created_at`, `updated_at` | `project_id → project(id)`, `column_id → columns(id)` |
+| `attempt` | Single agent runs (buah) | `id`, `task_id`, `agent_id`, `prompt_variant`, `worktree_path`, `branch_name`, `status` (`queued` / `running` / `completed` / `failed` / `cancelled`), `started_at`, `completed_at`, `verification_status` (`pending` / `passed` / `failed` / `skipped`), `verification_output` | `task_id → task(id)` |
+| `events` | Per-attempt event log (replay source for SSE) | `id` (autoincrement), `attempt_id`, `timestamp`, `type`, `payload` (JSON) | `attempt_id → attempt(id)` |
+
+Indexes, exact column types, and CHECK constraints live in [`migrations/0001_initial.sql`](migrations/0001_initial.sql). That file is the ground truth.
 
 ## Testing
 
