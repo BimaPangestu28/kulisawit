@@ -403,12 +403,27 @@ A formal `CONTRIBUTING.md` lands closer to v0.1. For now, ask in Issues if anyth
 
 ## Documentation Index
 
-_Filled in Task 10._
+- [`docs/PRD.md`](docs/PRD.md) — full product requirements (608 lines, source of truth for vision and scope)
+- [`docs/superpowers/specs/`](docs/superpowers/specs/) — per-phase design docs (one file per phase, dated)
+- [`docs/superpowers/plans/`](docs/superpowers/plans/) — per-phase implementation plans
+- [`migrations/`](migrations/) — SQLite schema (ground truth for the database section above)
+- This README — entry point + reference
 
 ## License
 
-_Filled in Task 10._
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ## Acknowledgments
 
-_Filled in Task 10._
+**Prior art.** [Vibe Kanban](https://github.com/), [Conductor](https://github.com/), and [Crystal](https://github.com/) — the agent-orchestration tools that motivated this project (PRD §1.1). Kulisawit owes the kanban-as-orchestrator framing to all three; the multi-attempt and worktree-isolation primitives are our contribution.
+
+**Stack.** Built on [Tokio](https://tokio.rs), [Axum](https://github.com/tokio-rs/axum), [sqlx](https://github.com/launchbadge/sqlx), [git2-rs](https://github.com/rust-lang/git2-rs), and [rust-embed](https://github.com/pyrossh/rust-embed). The Rust ecosystem makes single-binary local-first tools genuinely easy.
+
+**Plantation metaphor.** Named in honor of palm-plantation workers in Indonesia. The metaphor is a tribute, not a costume.
