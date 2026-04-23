@@ -117,3 +117,33 @@ async fn move_task_to_other_column_updates_column_id_and_bumps_position() {
     let l = task::get(&pool, &id).await.expect("ok").expect("row");
     assert_eq!(l.column_id, target.id);
 }
+
+#[tokio::test]
+async fn list_for_project_returns_tasks_across_all_columns_in_position_order() {
+    let (pool, project_id, _) = setup().await;
+    let cols = columns::list_for_project(&pool, &project_id)
+        .await
+        .expect("cols");
+    // Insert 2 tasks in column[0], 1 in column[2], in mixed order
+    for (col_idx, title) in [(0, "a"), (2, "x"), (0, "b")] {
+        task::create(
+            &pool,
+            task::NewTask {
+                project_id: project_id.clone(),
+                column_id: cols[col_idx].id.clone(),
+                title: title.into(),
+                description: None,
+                tags: vec![],
+                linked_files: vec![],
+            },
+        )
+        .await
+        .expect("task");
+    }
+    let all = task::list_for_project(&pool, &project_id)
+        .await
+        .expect("list");
+    assert_eq!(all.len(), 3, "expected 3 tasks across all columns");
+    let titles: Vec<&str> = all.iter().map(|t| t.title.as_str()).collect();
+    assert_eq!(titles, vec!["a", "b", "x"]);
+}

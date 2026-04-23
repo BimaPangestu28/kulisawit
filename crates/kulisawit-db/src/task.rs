@@ -137,6 +137,35 @@ pub async fn list_for_column(pool: &DbPool, column_id: &ColumnId) -> DbResult<Ve
         .collect()
 }
 
+pub async fn list_for_project(pool: &DbPool, project_id: &ProjectId) -> DbResult<Vec<Task>> {
+    let project_str = project_id.as_str();
+    let rows = sqlx::query!(
+        "SELECT id, project_id, column_id, title, description, position, tags, linked_files, created_at, updated_at
+         FROM task WHERE project_id = ? ORDER BY column_id, position ASC",
+        project_str
+    )
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(|r| {
+            let id =
+                r.id.ok_or_else(|| DbError::Invalid("task.id null".into()))?;
+            Ok::<_, DbError>(Task {
+                id: TaskId::from_string(id),
+                project_id: ProjectId::from_string(r.project_id),
+                column_id: ColumnId::from_string(r.column_id),
+                title: r.title,
+                description: r.description,
+                position: r.position,
+                tags: parse_string_list(r.tags.as_deref())?,
+                linked_files: parse_string_list(r.linked_files.as_deref())?,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+        })
+        .collect()
+}
+
 pub async fn update_text(
     pool: &DbPool,
     id: &TaskId,
