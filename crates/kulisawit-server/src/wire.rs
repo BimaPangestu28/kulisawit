@@ -45,6 +45,12 @@ pub struct ProjectResponse {
     pub name: String,
     pub repo_path: String,
     pub created_at: i64,
+    /// Filled with seeded column IDs only on the POST /api/projects response.
+    /// Always an empty Vec on GET /api/projects (list) responses; clients that
+    /// need column IDs after listing should call GET /api/projects/:id/board.
+    /// Keep in sync with ui/src/types/api.ts.
+    #[serde(default)]
+    pub column_ids: Vec<ColumnId>,
 }
 
 #[derive(Debug, Serialize)]
@@ -95,6 +101,7 @@ impl From<kulisawit_db::project::Project> for ProjectResponse {
             name: p.name,
             repo_path: p.repo_path,
             created_at: p.created_at,
+            column_ids: vec![],
         }
     }
 }
@@ -145,6 +152,7 @@ mod tests {
             name: "Demo".into(),
             repo_path: "/tmp/demo".into(),
             created_at: 1_700_000_000_000,
+            column_ids: vec![],
         };
         let json = serde_json::to_string(&r).expect("ser");
         assert!(json.contains("\"repo_path\""));

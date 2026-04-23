@@ -31,7 +31,7 @@ async fn fresh_app() -> axum::Router {
 }
 
 #[tokio::test]
-async fn post_projects_with_valid_body_returns_200_and_inserts() {
+async fn post_projects_with_valid_body_returns_200_and_inserts_with_seeded_columns() {
     let app = fresh_app().await;
     let body = r#"{"name":"Demo","repo_path":"/tmp/demo"}"#;
     let resp = app
@@ -52,6 +52,11 @@ async fn post_projects_with_valid_body_returns_200_and_inserts() {
     assert_eq!(json["repo_path"], "/tmp/demo");
     assert!(json["id"].is_string());
     assert!(json["created_at"].is_i64());
+    let column_ids = json["column_ids"].as_array().expect("column_ids array");
+    assert_eq!(column_ids.len(), 5, "expected 5 default columns auto-seeded");
+    for col in column_ids {
+        assert!(col.is_string(), "column id should be string");
+    }
 }
 
 #[tokio::test]

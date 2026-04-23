@@ -28,10 +28,14 @@ async fn create(
         },
     )
     .await?;
+    let column_ids =
+        kulisawit_db::columns::seed_defaults(state.orch.pool(), &id).await?;
     let row = project::get(state.orch.pool(), &id)
         .await?
         .ok_or_else(|| ServerError::Internal("project vanished after insert".into()))?;
-    Ok(Json(row.into()))
+    let mut resp: ProjectResponse = row.into();
+    resp.column_ids = column_ids;
+    Ok(Json(resp))
 }
 
 async fn get_by_id(
