@@ -1,0 +1,7 @@
+/* Tailwind directives land here in Task 6. */
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background: #0a0a0a;
+  color: #fafafa;
+}
