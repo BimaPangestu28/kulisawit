@@ -12,7 +12,7 @@ use crate::{AppState, ServerError, ServerResult};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/api/projects", post(create))
+        .route("/api/projects", post(create).get(list))
         .route("/api/projects/:id", get(get_by_id))
 }
 
@@ -49,4 +49,9 @@ async fn get_by_id(
             id: id.as_str().to_owned(),
         })?;
     Ok(Json(row.into()))
+}
+
+async fn list(State(state): State<AppState>) -> ServerResult<Json<Vec<ProjectResponse>>> {
+    let rows = project::list(state.orch.pool()).await?;
+    Ok(Json(rows.into_iter().map(Into::into).collect()))
 }
