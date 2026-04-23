@@ -92,6 +92,20 @@ pub struct EventEnvelope {
     pub ts_ms: i64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct BoardResponse {
+    pub project: ProjectResponse,
+    pub columns: Vec<BoardColumn>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BoardColumn {
+    pub id: ColumnId,
+    pub name: String,
+    pub position: i64,
+    pub tasks: Vec<TaskResponse>,
+}
+
 // ---- Conversions from DB structs ----
 
 impl From<kulisawit_db::project::Project> for ProjectResponse {

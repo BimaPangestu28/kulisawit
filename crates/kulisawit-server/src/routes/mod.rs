@@ -1,6 +1,7 @@
 //! Router composition.
 
 pub mod attempts;
+pub mod board;
 pub mod projects;
 pub mod tasks;
 
@@ -13,5 +14,6 @@ pub fn router(state: AppState) -> Router {
         .merge(projects::routes())
         .merge(tasks::routes())
         .merge(attempts::routes())
+        .merge(board::routes())
         .with_state(state)
 }
