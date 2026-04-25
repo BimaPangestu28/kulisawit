@@ -7,7 +7,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTask } from "@/hooks/useTask";
 import { useBoard } from "@/hooks/useBoard";
+import { useUpdateTask } from "@/hooks/useUpdateTask";
 import { useUiStore } from "@/store/ui";
+import { EditableTitle } from "@/components/EditableTitle";
 import { LahanInfoSection } from "@/components/LahanInfoSection";
 import { LahanDispatchSection } from "@/components/LahanDispatchSection";
 import { LahanAttemptsSection } from "@/components/LahanAttemptsSection";
@@ -20,12 +22,23 @@ export function LahanDetailSheet() {
   const { data: task, isLoading } = useTask(selectedTaskId);
   const projectId = task?.project_id ?? null;
   const { data: board } = useBoard(projectId);
+  const update = useUpdateTask();
 
   return (
     <Sheet open={isDetailOpen} onOpenChange={(o) => { if (!o) closeDetail(); }}>
       <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{task?.title ?? "Loading…"}</SheetTitle>
+          {task ? (
+            <EditableTitle
+              value={task.title}
+              pending={update.isPending}
+              onSave={(newTitle) =>
+                update.mutate({ id: task.id, body: { title: newTitle } })
+              }
+            />
+          ) : (
+            <SheetTitle>Loading…</SheetTitle>
+          )}
         </SheetHeader>
         {isLoading || !task || !board ? (
           <Skeleton className="h-32 w-full mt-4" />
