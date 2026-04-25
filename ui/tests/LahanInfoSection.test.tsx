@@ -14,8 +14,8 @@ const task: Task = {
   title: "Refactor parser",
   description: "Make it streaming",
   position: 0,
-  tags: [],
-  linked_files: [],
+  tags: ["initial"],
+  linked_files: ["src/parser.rs"],
   created_at: 0,
   updated_at: 0,
 };
@@ -33,40 +33,41 @@ function renderWithClient(ui: React.ReactElement) {
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
-describe("LahanInfoSection", () => {
+describe("LahanInfoSection (post-3.2.3 refactor)", () => {
   beforeEach(() => {
     server.resetHandlers();
   });
 
-  it("pre-fills inputs from task", () => {
+  it("does NOT render title input (handled by EditableTitle in drawer header)", () => {
     renderWithClient(<LahanInfoSection task={task} columns={columns} />);
-    expect(screen.getByDisplayValue("Refactor parser")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Refactor parser")).not.toBeInTheDocument();
+    // Description still present
     expect(screen.getByDisplayValue("Make it streaming")).toBeInTheDocument();
   });
 
-  it("save button calls update with only changed fields", async () => {
+  it("save sends only changed fields including tags+files", async () => {
     let receivedBody: Record<string, unknown> | null = null;
     server.use(
       http.patch("/api/tasks/:id", async ({ request }) => {
         receivedBody = (await request.json()) as Record<string, unknown>;
         return new Response(
-          JSON.stringify({ ...task, title: "New title" }),
+          JSON.stringify({ ...task, description: "new desc" }),
           { headers: { "content-type": "application/json" } },
         );
       }),
     );
     renderWithClient(<LahanInfoSection task={task} columns={columns} />);
-    const titleInput = screen.getByDisplayValue("Refactor parser");
-    await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, "New title");
+    const desc = screen.getByDisplayValue("Make it streaming");
+    await userEvent.clear(desc);
+    await userEvent.type(desc, "new desc");
     await userEvent.click(screen.getByRole("button", { name: /save/i }));
     await waitFor(() => {
       expect(receivedBody).not.toBeNull();
     });
-    expect(receivedBody).toEqual({ title: "New title" });
+    expect(receivedBody).toEqual({ description: "new desc" });
   });
 
-  it("move dropdown fires update immediately on selection", async () => {
+  it("move dropdown fires immediately on selection", async () => {
     let receivedBody: Record<string, unknown> | null = null;
     server.use(
       http.patch("/api/tasks/:id", async ({ request }) => {
