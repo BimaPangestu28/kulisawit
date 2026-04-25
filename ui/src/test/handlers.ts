@@ -105,6 +105,8 @@ export const handlers = [
         branch_name: "kulisawit/a1",
         started_at: 1745000000000,
         completed_at: null,
+        verification_status: null,
+        verification_output: null,
       },
     ]),
   ),

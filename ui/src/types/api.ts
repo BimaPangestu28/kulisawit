@@ -78,6 +78,8 @@ export type AttemptStatus =
   | "failed"
   | "cancelled";
 
+export type VerificationStatus = "pending" | "passed" | "failed" | "skipped";
+
 export interface Attempt {
   id: string;
   task_id: string;
@@ -88,6 +90,9 @@ export interface Attempt {
   branch_name: string;
   started_at: number | null;
   completed_at: number | null;
+  // NEW (Phase 3.3.1) — keep in sync with kulisawit-server/src/wire.rs::AttemptResponse
+  verification_status: VerificationStatus | null;
+  verification_output: string | null;
 }
 
 // ---- SSE event shapes (mirror kulisawit-core::AgentEvent + EventEnvelope) ----
