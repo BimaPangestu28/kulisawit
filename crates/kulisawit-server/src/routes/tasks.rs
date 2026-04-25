@@ -123,9 +123,14 @@ async fn update(
     Path(id): Path<TaskId>,
     Json(req): Json<UpdateTaskRequest>,
 ) -> ServerResult<Json<TaskResponse>> {
-    if req.title.is_none() && req.description.is_none() && req.column_id.is_none() {
+    if req.title.is_none()
+        && req.description.is_none()
+        && req.column_id.is_none()
+        && req.tags.is_none()
+        && req.linked_files.is_none()
+    {
         return Err(ServerError::InvalidInput(
-            "at least one of title, description, column_id is required".into(),
+            "at least one of title, description, column_id, tags, linked_files is required".into(),
         ));
     }
 
@@ -143,6 +148,12 @@ async fn update(
             None => current.description.as_deref(),
         };
         task::update_text(state.orch.pool(), &id, title, description).await?;
+    }
+
+    if req.tags.is_some() || req.linked_files.is_some() {
+        let tags = req.tags.unwrap_or_else(|| current.tags.clone());
+        let linked_files = req.linked_files.unwrap_or_else(|| current.linked_files.clone());
+        task::update_metadata(state.orch.pool(), &id, &tags, &linked_files).await?;
     }
 
     if let Some(col_id) = req.column_id.as_ref() {

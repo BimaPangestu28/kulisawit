@@ -55,6 +55,8 @@ export interface UpdateTaskRequest {
   title?: string;
   description?: string;
   column_id?: string;
+  tags?: string[];
+  linked_files?: string[];
 }
 
 export interface DispatchRequest {

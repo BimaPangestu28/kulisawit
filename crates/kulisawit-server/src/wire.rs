@@ -45,6 +45,10 @@ pub struct UpdateTaskRequest {
     pub description: Option<String>,
     #[serde(default)]
     pub column_id: Option<ColumnId>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub linked_files: Option<Vec<String>>,
 }
 
 // ---- Responses ----
