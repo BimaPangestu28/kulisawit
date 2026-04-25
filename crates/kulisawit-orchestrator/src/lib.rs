@@ -19,6 +19,7 @@ pub mod error;
 pub mod orchestrator;
 pub mod prompt;
 pub mod registry;
+pub mod sortir;
 
 pub use broadcaster::EventBroadcaster;
 pub use config::RuntimeConfig;
