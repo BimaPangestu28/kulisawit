@@ -55,4 +55,72 @@ export const handlers = [
     }
     return HttpResponse.json(sampleBoard);
   }),
+
+  http.post("/api/tasks", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const fakeTask = {
+      id: "new-task-id",
+      project_id: body.project_id,
+      column_id: body.column_id,
+      title: body.title,
+      description: body.description ?? null,
+      position: 0,
+      tags: body.tags ?? [],
+      linked_files: body.linked_files ?? [],
+      created_at: 1745000000000,
+      updated_at: 1745000000000,
+    };
+    return HttpResponse.json(fakeTask);
+  }),
+
+  http.patch("/api/tasks/:id", async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      id: params.id,
+      project_id: "01900000-0000-0000-0000-000000000001",
+      column_id: body.column_id ?? "c1",
+      title: body.title ?? "Existing title",
+      description: body.description ?? null,
+      position: 0,
+      tags: [],
+      linked_files: [],
+      created_at: 1745000000000,
+      updated_at: 1745000000001,
+    });
+  }),
+
+  http.post("/api/tasks/:id/dispatch", async () =>
+    HttpResponse.json({ attempt_ids: ["a1", "a2"] }),
+  ),
+
+  http.get("/api/tasks/:id/attempts", () =>
+    HttpResponse.json([
+      {
+        id: "a1",
+        task_id: "t1",
+        agent_id: "mock",
+        status: "running",
+        prompt_variant: null,
+        worktree_path: "/tmp/wt/a1",
+        branch_name: "kulisawit/a1",
+        started_at: 1745000000000,
+        completed_at: null,
+      },
+    ]),
+  ),
+
+  http.get("/api/tasks/:id", ({ params }) =>
+    HttpResponse.json({
+      id: params.id,
+      project_id: "01900000-0000-0000-0000-000000000001",
+      column_id: "c1",
+      title: "Refactor parser",
+      description: "Make it streaming",
+      position: 0,
+      tags: ["refactor"],
+      linked_files: [],
+      created_at: 1745000000000,
+      updated_at: 1745000000000,
+    }),
+  ),
 ];
