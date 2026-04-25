@@ -1,12 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { TaskCard } from "@/components/TaskCard";
+import { AddTaskInline } from "@/components/AddTaskInline";
 import type { BoardColumn } from "@/types/api";
 
 interface Props {
   column: BoardColumn;
+  projectId: string;
 }
 
-export function KanbanColumn({ column }: Props) {
+export function KanbanColumn({ column, projectId }: Props) {
   return (
     <div
       data-testid={`column-${column.name}`}
@@ -27,6 +29,9 @@ export function KanbanColumn({ column }: Props) {
       ) : (
         column.tasks.map((task) => <TaskCard key={task.id} task={task} />)
       )}
+      <div className="mt-2">
+        <AddTaskInline projectId={projectId} columnId={column.id} />
+      </div>
     </div>
   );
 }

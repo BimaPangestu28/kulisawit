@@ -3,6 +3,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { EmptyState } from "@/components/EmptyState";
+import { LahanDetailSheet } from "@/components/LahanDetailSheet";
 
 const STORAGE_KEY = "kulisawit.activeProject";
 
@@ -42,6 +43,7 @@ function App() {
           onSelect={setActiveProjectId}
         />
       </header>
+      <LahanDetailSheet />
       <main className="p-6">
         {activeProjectId ? (
           <KanbanBoard projectId={activeProjectId} />

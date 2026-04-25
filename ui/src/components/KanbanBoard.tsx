@@ -49,7 +49,7 @@ export function KanbanBoard({ projectId }: Props) {
       style={{ gridTemplateColumns: "repeat(5, minmax(280px, 1fr))" }}
     >
       {data.columns.map((column) => (
-        <KanbanColumn key={column.id} column={column} />
+        <KanbanColumn key={column.id} column={column} projectId={projectId} />
       ))}
     </div>
   );
