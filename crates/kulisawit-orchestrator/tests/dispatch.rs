@@ -35,18 +35,18 @@ fn init_repo(dir: &std::path::Path) {
         .unwrap();
 }
 
-async fn build_orch(repo_dir: &std::path::Path, mode: MockMode) -> Orchestrator {
+async fn build_orch(repo_dir: &std::path::Path, mode: MockMode) -> Arc<Orchestrator> {
     let pool = connect("sqlite::memory:").await.expect("pool");
     migrate(&pool).await.expect("mig");
     let mut registry = AgentRegistry::new();
     registry.register(Arc::new(MockAgent::new(mode)) as Arc<dyn AgentAdapter>);
-    Orchestrator::new(
+    Arc::new(Orchestrator::new(
         pool,
         registry,
         repo_dir.to_path_buf(),
         repo_dir.join(".kulisawit/worktrees"),
         RuntimeConfig::default(),
-    )
+    ))
 }
 
 async fn seed_task(orch: &Orchestrator) -> kulisawit_core::TaskId {

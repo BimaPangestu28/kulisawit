@@ -95,3 +95,61 @@ timeout_secs = 1
     assert_eq!(status, kulisawit_core::VerificationStatus::Failed);
     assert!(output.contains("TIMEOUT"), "expected TIMEOUT marker, got: {output}");
 }
+
+use std::sync::Arc;
+use std::time::Duration as StdDuration;
+use kulisawit_agent::MockAgent;
+use kulisawit_core::AgentAdapter;
+use kulisawit_db::{columns, connect, migrate, project, project::NewProject, task, task::NewTask, attempt as attempt_db};
+use kulisawit_orchestrator::{dispatch_batch_spawned, AgentRegistry, Orchestrator, RuntimeConfig};
+use std::process::Command;
+
+#[tokio::test]
+async fn dispatch_with_succeeded_agent_triggers_sortir() {
+    let pool = connect("sqlite::memory:").await.expect("pool");
+    migrate(&pool).await.expect("mig");
+    let mut registry = AgentRegistry::new();
+    registry.register(Arc::new(MockAgent::default()) as Arc<dyn AgentAdapter>);
+
+    let dir = tempfile::tempdir().expect("tmp");
+    let repo_path = dir.path().to_path_buf();
+    Command::new("git").arg("init").arg("-q").arg(&repo_path).output().expect("git init");
+    std::fs::write(repo_path.join("README"), "init").expect("write");
+    Command::new("git").current_dir(&repo_path).args(["add", "README"]).output().expect("add");
+    Command::new("git").current_dir(&repo_path)
+        .args(["-c", "user.email=a@b", "-c", "user.name=t", "commit", "-qm", "init"])
+        .output().expect("commit");
+
+    // No sortir.toml → expect Skipped
+    let orch = Arc::new(Orchestrator::new(
+        pool.clone(), registry, repo_path.clone(), dir.path().join("wt"), RuntimeConfig::default(),
+    ));
+    let project_id = project::create(&pool, NewProject {
+        name: "p".into(), repo_path: repo_path.display().to_string(),
+    }).await.expect("project");
+    let cols = columns::seed_defaults(&pool, &project_id).await.expect("cols");
+    let task_id = task::create(&pool, NewTask {
+        project_id: project_id.clone(),
+        column_id: cols[0].clone(),
+        title: "t".into(), description: None,
+        tags: vec![], linked_files: vec![],
+    }).await.expect("task");
+
+    let attempt_ids = dispatch_batch_spawned(&orch, &task_id, "mock", 1, None)
+        .await.expect("dispatch");
+    assert_eq!(attempt_ids.len(), 1);
+    let attempt_id = attempt_ids[0].clone();
+
+    // Wait for sortir to finish (best-effort poll)
+    let mut verification: Option<kulisawit_core::VerificationStatus> = None;
+    for _ in 0..50 {
+        tokio::time::sleep(StdDuration::from_millis(100)).await;
+        if let Some(a) = attempt_db::get(&pool, &attempt_id).await.expect("get") {
+            if let Some(v) = a.verification_status {
+                verification = Some(v);
+                break;
+            }
+        }
+    }
+    assert_eq!(verification, Some(kulisawit_core::VerificationStatus::Skipped));
+}

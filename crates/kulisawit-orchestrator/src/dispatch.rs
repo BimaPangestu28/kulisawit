@@ -23,7 +23,7 @@
 use std::sync::Arc;
 
 use futures::StreamExt;
-use kulisawit_core::{AgentEvent, AttemptId, AttemptStatus, RunContext, RunStatus, TaskId};
+use kulisawit_core::{AgentEvent, AttemptId, AttemptStatus, RunContext, RunStatus, TaskId, VerificationStatus};
 use kulisawit_db::{attempt, events, task};
 use kulisawit_git::{
     branch::commit_all_in_worktree,
@@ -58,7 +58,7 @@ fn short_attempt(id: &str) -> String {
 
 #[instrument(skip(orch), fields(task = %task_id, agent = agent_id))]
 pub async fn dispatch_single_attempt(
-    orch: &Orchestrator,
+    orch: &Arc<Orchestrator>,
     task_id: &TaskId,
     agent_id: &str,
     prompt_variant: Option<String>,
@@ -160,6 +160,45 @@ pub async fn dispatch_single_attempt(
         warn!(attempt = %attempt_id, "commit_all_in_worktree failed: {e}");
     }
     attempt::mark_terminal(orch.pool(), &attempt_id, terminal).await?;
+
+    match terminal {
+        AttemptStatus::Completed => {
+            let _ = attempt::set_verification(
+                orch.pool(),
+                &attempt_id,
+                VerificationStatus::Pending,
+                Some("queued"),
+            )
+            .await;
+            let orch_for_sortir = Arc::clone(orch);
+            let id_for_sortir = attempt_id.clone();
+            tokio::spawn(async move {
+                crate::sortir::run_sortir(orch_for_sortir, id_for_sortir).await;
+            });
+        }
+        AttemptStatus::Failed | AttemptStatus::Cancelled => {
+            let _ = attempt::set_verification(
+                orch.pool(),
+                &attempt_id,
+                VerificationStatus::Skipped,
+                Some("agent did not complete successfully"),
+            )
+            .await;
+            let derived = match terminal {
+                AttemptStatus::Failed => RunStatus::Failed,
+                AttemptStatus::Cancelled => RunStatus::Cancelled,
+                _ => unreachable!(),
+            };
+            orch.broadcaster().send(
+                &attempt_id,
+                AgentEvent::Status {
+                    status: derived,
+                    detail: Some("sortir:skipped".into()),
+                },
+            );
+        }
+        _ => {}
+    }
 
     orch.broadcaster().close(&attempt_id);
     orch.remove_cancel_flag(&attempt_id).await;
@@ -284,6 +323,45 @@ async fn reserve_and_build_run(
         }
 
         attempt::mark_terminal(orch.pool(), &attempt_id, terminal).await?;
+
+        match terminal {
+            AttemptStatus::Completed => {
+                let _ = attempt::set_verification(
+                    orch.pool(),
+                    &attempt_id,
+                    VerificationStatus::Pending,
+                    Some("queued"),
+                )
+                .await;
+                let orch_for_sortir = Arc::clone(&orch);
+                let id_for_sortir = attempt_id.clone();
+                tokio::spawn(async move {
+                    crate::sortir::run_sortir(orch_for_sortir, id_for_sortir).await;
+                });
+            }
+            AttemptStatus::Failed | AttemptStatus::Cancelled => {
+                let _ = attempt::set_verification(
+                    orch.pool(),
+                    &attempt_id,
+                    VerificationStatus::Skipped,
+                    Some("agent did not complete successfully"),
+                )
+                .await;
+                let derived = match terminal {
+                    AttemptStatus::Failed => RunStatus::Failed,
+                    AttemptStatus::Cancelled => RunStatus::Cancelled,
+                    _ => unreachable!(),
+                };
+                orch.broadcaster().send(
+                    &attempt_id,
+                    AgentEvent::Status {
+                        status: derived,
+                        detail: Some("sortir:skipped".into()),
+                    },
+                );
+            }
+            _ => {}
+        }
 
         orch.broadcaster().close(&attempt_id);
         orch.remove_cancel_flag(&attempt_id).await;
