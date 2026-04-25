@@ -186,6 +186,28 @@ pub async fn update_text(
     Ok(())
 }
 
+pub async fn update_metadata(
+    pool: &DbPool,
+    id: &TaskId,
+    tags: &[String],
+    linked_files: &[String],
+) -> DbResult<()> {
+    let now = Utc::now().timestamp_millis();
+    let id_str = id.as_str();
+    let tags_json = serde_json::to_string(tags)?;
+    let files_json = serde_json::to_string(linked_files)?;
+    sqlx::query!(
+        "UPDATE task SET tags = ?, linked_files = ?, updated_at = ? WHERE id = ?",
+        tags_json,
+        files_json,
+        now,
+        id_str
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn move_to_column(pool: &DbPool, id: &TaskId, column_id: &ColumnId) -> DbResult<()> {
     let position = next_position(pool, column_id).await?;
     let now = Utc::now().timestamp_millis();

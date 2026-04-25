@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE task SET tags = ?, linked_files = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "ce75bcd2cdf9ab309524a7cbba7f3351aa351b91397b4e4e87b2ec5600b269e3"
+}

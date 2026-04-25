@@ -147,3 +147,34 @@ async fn list_for_project_returns_tasks_across_all_columns_in_position_order() {
     let titles: Vec<&str> = all.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, vec!["a", "b", "x"]);
 }
+
+#[tokio::test]
+async fn update_metadata_persists_tags_and_linked_files() {
+    let (pool, project_id, col_id) = setup().await;
+    let task_id = task::create(
+        &pool,
+        task::NewTask {
+            project_id: project_id.clone(),
+            column_id: col_id.clone(),
+            title: "t".into(),
+            description: None,
+            tags: vec!["initial".into()],
+            linked_files: vec![],
+        },
+    )
+    .await
+    .expect("task");
+
+    let new_tags = vec!["refactor".into(), "perf".into()];
+    let new_files = vec!["src/parser.rs".into(), "src/lexer.rs".into()];
+    task::update_metadata(&pool, &task_id, &new_tags, &new_files)
+        .await
+        .expect("update");
+
+    let row = task::get(&pool, &task_id)
+        .await
+        .expect("get")
+        .expect("present");
+    assert_eq!(row.tags, new_tags);
+    assert_eq!(row.linked_files, new_files);
+}
