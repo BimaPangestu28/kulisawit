@@ -37,6 +37,16 @@ pub struct DispatchRequest {
     pub variants: Option<Vec<String>>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateTaskRequest {
+    #[serde(default)]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub column_id: Option<ColumnId>,
+}
+
 // ---- Responses ----
 
 #[derive(Debug, Serialize)]

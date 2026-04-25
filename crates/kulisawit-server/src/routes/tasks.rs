@@ -13,13 +13,13 @@ use kulisawit_db::{
 };
 use kulisawit_orchestrator::dispatch_batch_spawned;
 
-use crate::wire::{DispatchRequest, DispatchResponse, NewTaskRequest, TaskResponse};
+use crate::wire::{DispatchRequest, DispatchResponse, NewTaskRequest, TaskResponse, UpdateTaskRequest};
 use crate::{AppState, ServerError, ServerResult};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/tasks", post(create))
-        .route("/api/tasks/:id", get(get_by_id))
+        .route("/api/tasks/:id", get(get_by_id).patch(update))
         .route("/api/tasks/:id/dispatch", post(dispatch))
 }
 
@@ -98,4 +98,48 @@ async fn dispatch(
         })?;
 
     Ok(Json(DispatchResponse { attempt_ids }))
+}
+
+async fn update(
+    State(state): State<AppState>,
+    Path(id): Path<TaskId>,
+    Json(req): Json<UpdateTaskRequest>,
+) -> ServerResult<Json<TaskResponse>> {
+    if req.title.is_none() && req.description.is_none() && req.column_id.is_none() {
+        return Err(ServerError::InvalidInput(
+            "at least one of title, description, column_id is required".into(),
+        ));
+    }
+
+    let current = task::get(state.orch.pool(), &id)
+        .await?
+        .ok_or_else(|| ServerError::NotFound {
+            entity: "task",
+            id: id.as_str().to_owned(),
+        })?;
+
+    if req.title.is_some() || req.description.is_some() {
+        let title = req.title.as_deref().unwrap_or(current.title.as_str());
+        let description: Option<&str> = match &req.description {
+            Some(d) => Some(d.as_str()),
+            None => current.description.as_deref(),
+        };
+        task::update_text(state.orch.pool(), &id, title, description).await?;
+    }
+
+    if let Some(col_id) = req.column_id.as_ref() {
+        let cols = columns::list_for_project(state.orch.pool(), &current.project_id).await?;
+        if !cols.iter().any(|c| &c.id == col_id) {
+            return Err(ServerError::InvalidInput(format!(
+                "column not found in project: {}",
+                col_id.as_str()
+            )));
+        }
+        task::move_to_column(state.orch.pool(), &id, col_id).await?;
+    }
+
+    let row = task::get(state.orch.pool(), &id)
+        .await?
+        .ok_or_else(|| ServerError::Internal("task vanished after update".into()))?;
+    Ok(Json(row.into()))
 }
