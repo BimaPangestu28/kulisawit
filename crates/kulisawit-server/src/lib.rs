@@ -14,6 +14,9 @@ pub mod wire;
 
 mod routes;
 
+#[cfg(feature = "embed-ui")]
+pub mod assets;
+
 pub use error::{ServerError, ServerResult};
 pub use state::{AppState, ServeConfig};
 

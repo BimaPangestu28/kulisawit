@@ -27,6 +27,12 @@ kulisawit-core.workspace = true
 kulisawit-db.workspace = true
 kulisawit-agent.workspace = true
 kulisawit-orchestrator.workspace = true
+rust-embed = { workspace = true, optional = true }
+mime_guess = { version = "2", optional = true }
+
+[features]
+default = []
+embed-ui = ["dep:rust-embed", "dep:mime_guess"]
 
 [dev-dependencies]
 http-body-util = "0.1"
