@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,14 @@ export function EditableTitle({ value, onSave, pending }: Props) {
   const [editing, setEditing] = useState(false);
   const [committed, setCommitted] = useState(value);
   const [draft, setDraft] = useState(value);
+
+  // Sync to prop changes (different task selected in drawer). Only depends on
+  // `value` — toggling `editing` must NOT reset `committed`, since save()
+  // optimistically sets it to the new value before the parent prop updates.
+  useEffect(() => {
+    setCommitted(value);
+    setDraft(value);
+  }, [value]);
 
   if (!editing) {
     return (
