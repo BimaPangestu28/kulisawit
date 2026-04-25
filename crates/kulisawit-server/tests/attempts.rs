@@ -115,8 +115,88 @@ async fn get_attempt_existing_returns_200_with_expected_shape() {
     assert_eq!(json["agent_id"], "mock");
     assert_eq!(json["status"], "queued");
     assert_eq!(json["branch_name"], "kulisawit/a/b");
-    assert!(!json
-        .as_object()
-        .unwrap()
-        .contains_key("verification_status"));
+    assert!(
+        json.as_object().unwrap().contains_key("verification_status"),
+        "verification_status field missing"
+    );
+    assert!(json["verification_status"].is_null());
+    assert!(
+        json.as_object().unwrap().contains_key("verification_output"),
+        "verification_output field missing"
+    );
+    assert!(json["verification_output"].is_null());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_attempt_response_includes_verification_fields() {
+    let pool = connect("sqlite::memory:").await.expect("pool");
+    migrate(&pool).await.expect("mig");
+    let mut registry = AgentRegistry::new();
+    registry.register(Arc::new(MockAgent::default()) as Arc<dyn AgentAdapter>);
+    let dir = tempdir().expect("tmp");
+
+    let project_id = project::create(
+        &pool,
+        project::NewProject {
+            name: "p".into(),
+            repo_path: dir.path().display().to_string(),
+        },
+    )
+    .await
+    .expect("project");
+    let cols = columns::seed_defaults(&pool, &project_id).await.expect("cols");
+    let task_id = task::create(
+        &pool,
+        task::NewTask {
+            project_id,
+            column_id: cols[0].clone(),
+            title: "t".into(),
+            description: None,
+            tags: vec![],
+            linked_files: vec![],
+        },
+    )
+    .await
+    .expect("task");
+    let attempt_id = attempt_db::create(
+        &pool,
+        attempt_db::NewAttempt {
+            task_id: task_id.clone(),
+            agent_id: "mock".into(),
+            prompt_variant: None,
+            worktree_path: "/tmp/wt".into(),
+            branch_name: "b".into(),
+        },
+    )
+    .await
+    .expect("attempt");
+
+    let orch = Arc::new(Orchestrator::new(
+        pool,
+        registry,
+        dir.path().to_path_buf(),
+        dir.path().join("wt"),
+        RuntimeConfig::default(),
+    ));
+    std::mem::forget(dir);
+    let app = routes_for_testing(AppState { orch });
+
+    let uri = format!("/api/attempts/{}", attempt_id.as_str());
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    // Both fields must be present (null on a fresh attempt)
+    assert!(json.get("verification_status").is_some(), "verification_status field absent");
+    assert!(json.get("verification_output").is_some(), "verification_output field absent");
+    assert!(json["verification_status"].is_null());
 }

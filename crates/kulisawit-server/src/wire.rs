@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use kulisawit_core::{AgentEvent, AttemptId, AttemptStatus, ColumnId, ProjectId, TaskId};
+use kulisawit_core::{AgentEvent, AttemptId, AttemptStatus, ColumnId, ProjectId, TaskId, VerificationStatus};
 
 // ---- Requests ----
 
@@ -92,6 +92,11 @@ pub struct AttemptResponse {
     pub branch_name: String,
     pub started_at: Option<i64>,
     pub completed_at: Option<i64>,
+    /// NEW (Phase 3.3.1). null until sortir runs; one of pending/passed/failed/skipped.
+    /// Keep in sync with ui/src/types/api.ts::Attempt.
+    pub verification_status: Option<VerificationStatus>,
+    /// NEW (Phase 3.3.1). Aggregated text output of all checks; capped at 256 KB.
+    pub verification_output: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -163,6 +168,8 @@ impl From<kulisawit_db::attempt::Attempt> for AttemptResponse {
             branch_name: a.branch_name,
             started_at: a.started_at,
             completed_at: a.completed_at,
+            verification_status: a.verification_status,
+            verification_output: a.verification_output,
         }
     }
 }
@@ -188,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn attempt_response_omits_verification_fields() {
+    fn attempt_response_includes_verification_fields_as_null() {
         let r = AttemptResponse {
             id: AttemptId::new(),
             task_id: TaskId::new(),
@@ -199,11 +206,17 @@ mod tests {
             branch_name: "b".into(),
             started_at: None,
             completed_at: None,
+            verification_status: None,
+            verification_output: None,
         };
         let json = serde_json::to_string(&r).expect("ser");
         assert!(
-            !json.contains("verification"),
-            "no verification fields: {json}"
+            json.contains("\"verification_status\":null"),
+            "verification_status should be present as null: {json}"
+        );
+        assert!(
+            json.contains("\"verification_output\":null"),
+            "verification_output should be present as null: {json}"
         );
     }
 
