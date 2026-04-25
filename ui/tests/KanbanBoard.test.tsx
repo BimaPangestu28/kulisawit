@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { DndContext } from "@dnd-kit/core";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { KanbanBoard } from "@/components/KanbanBoard";
@@ -9,7 +10,11 @@ function renderWithClient(ui: React.ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={client}>
+      <DndContext>{ui}</DndContext>
+    </QueryClientProvider>,
+  );
 }
 
 describe("KanbanBoard", () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { DndContext } from "@dnd-kit/core";
 import { TaskCard } from "@/components/TaskCard";
 import type { Task } from "@/types/api";
 
@@ -16,16 +17,20 @@ const baseTask: Task = {
   updated_at: 0,
 };
 
+function renderWithDnd(ui: React.ReactElement) {
+  return render(<DndContext>{ui}</DndContext>);
+}
+
 describe("TaskCard", () => {
   it("renders title and description", () => {
-    render(<TaskCard task={baseTask} />);
+    renderWithDnd(<TaskCard task={baseTask} />);
     expect(screen.getByText("Refactor parser")).toBeInTheDocument();
     expect(screen.getByText("Make it streaming")).toBeInTheDocument();
   });
 
   it("hides description block when null", () => {
     const task: Task = { ...baseTask, description: null };
-    render(<TaskCard task={task} />);
+    renderWithDnd(<TaskCard task={task} />);
     expect(screen.getByText("Refactor parser")).toBeInTheDocument();
     expect(screen.queryByText("Make it streaming")).not.toBeInTheDocument();
   });
