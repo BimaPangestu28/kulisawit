@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  TERMINAL_RUN_STATUSES,
   type EventEnvelope,
 } from "@/types/api";
 
@@ -33,17 +32,17 @@ export function useAttemptEvents(attemptId: string | null): ReceivedEvent[] {
           ...prev,
           { envelope, receivedAt: Date.now() },
         ]);
-        if (
-          envelope.event.type === "status" &&
-          TERMINAL_RUN_STATUSES.includes(envelope.event.status)
-        ) {
-          es.close();
-          queryClient.invalidateQueries({ queryKey: ["attempt", attemptId] });
-          queryClient.invalidateQueries({ queryKey: ["task-attempts"] });
-          queryClient.invalidateQueries({ queryKey: ["board"] });
+        if (envelope.event.type === "status") {
+          const detail = envelope.event.detail ?? "";
+          if (detail.startsWith("sortir:")) {
+            es.close();
+            queryClient.invalidateQueries({ queryKey: ["attempt", attemptId] });
+            queryClient.invalidateQueries({ queryKey: ["task-attempts"] });
+            queryClient.invalidateQueries({ queryKey: ["board"] });
+          }
         }
       } catch {
-        // Malformed frame — ignore. Production server only emits valid JSON.
+        // malformed frame — ignore
       }
     };
 

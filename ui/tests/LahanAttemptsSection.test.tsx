@@ -37,10 +37,12 @@ describe("LahanAttemptsSection (tabs)", () => {
         HttpResponse.json([
           { id: "a1", task_id: "t1", agent_id: "mock", status: "running",
             prompt_variant: null, worktree_path: "/x", branch_name: "b1",
-            started_at: 1, completed_at: null },
+            started_at: 1, completed_at: null,
+            verification_status: null, verification_output: null },
           { id: "a2", task_id: "t1", agent_id: "mock", status: "completed",
             prompt_variant: null, worktree_path: "/y", branch_name: "b2",
-            started_at: 2, completed_at: 3 },
+            started_at: 2, completed_at: 3,
+            verification_status: null, verification_output: null },
         ]),
       ),
     );
@@ -56,10 +58,12 @@ describe("LahanAttemptsSection (tabs)", () => {
         HttpResponse.json([
           { id: "a1", task_id: "t1", agent_id: "mock", status: "running",
             prompt_variant: null, worktree_path: "/x", branch_name: "b1",
-            started_at: 1, completed_at: null },
+            started_at: 1, completed_at: null,
+            verification_status: null, verification_output: null },
           { id: "a2", task_id: "t1", agent_id: "mock", status: "completed",
             prompt_variant: null, worktree_path: "/y", branch_name: "b2",
-            started_at: 2, completed_at: 3 },
+            started_at: 2, completed_at: 3,
+            verification_status: null, verification_output: null },
         ]),
       ),
     );

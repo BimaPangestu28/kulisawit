@@ -10,6 +10,7 @@ import { useTaskAttempts } from "@/hooks/useTaskAttempts";
 import { useUiStore } from "@/store/ui";
 import type { AttemptStatus, Task } from "@/types/api";
 import { AttemptLogViewer } from "@/components/AttemptLogViewer";
+import { VerificationBadge } from "@/components/VerificationBadge";
 
 interface Props {
   task: Task;
@@ -58,12 +59,15 @@ export function LahanAttemptsSection({ task }: Props) {
               {a.status}
             </Badge>
             <span>{a.agent_id}</span>
+            {(a.status === "completed" || a.status === "failed" || a.status === "cancelled") && (
+              <VerificationBadge status={a.verification_status} />
+            )}
           </TabsTrigger>
         ))}
       </TabsList>
       {data.map((a) => (
         <TabsContent key={a.id} value={a.id}>
-          <AttemptLogViewer attemptId={a.id} />
+          <AttemptLogViewer attempt={a} />
         </TabsContent>
       ))}
     </Tabs>
