@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::process::Command;
 use std::sync::Arc;
 
 use axum::body::Body;
@@ -17,12 +18,35 @@ use kulisawit_server::{routes_for_testing, AppState};
 use tempfile::tempdir;
 use tower::ServiceExt;
 
+fn init_git_repo(dir: &std::path::Path) {
+    Command::new("git")
+        .args(["init", "-b", "main"])
+        .current_dir(dir)
+        .status()
+        .unwrap();
+    std::fs::write(dir.join("README.md"), "# test\n").unwrap();
+    Command::new("git")
+        .args(["-c", "user.email=t@t", "-c", "user.name=t", "add", "."])
+        .current_dir(dir)
+        .status()
+        .unwrap();
+    Command::new("git")
+        .args([
+            "-c", "user.email=t@t", "-c", "user.name=t",
+            "commit", "-m", "init",
+        ])
+        .current_dir(dir)
+        .status()
+        .unwrap();
+}
+
 async fn fresh_app_with_pool() -> (axum::Router, kulisawit_db::DbPool) {
     let pool = connect("sqlite::memory:").await.expect("pool");
     migrate(&pool).await.expect("mig");
     let mut registry = AgentRegistry::new();
     registry.register(Arc::new(MockAgent::default()) as Arc<dyn AgentAdapter>);
     let dir = tempdir().expect("tmp");
+    init_git_repo(dir.path());
     let orch = Arc::new(Orchestrator::new(
         pool.clone(),
         registry,
@@ -253,4 +277,68 @@ async fn patch_task_with_empty_body_returns_400() {
             .body(Body::from(body)).unwrap(),
     ).await.unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn get_task_attempts_returns_empty_array_for_no_dispatch() {
+    let (app, pool) = fresh_app_with_pool().await;
+    let project_id = project::create(&pool, NewProject {
+        name: "p".into(), repo_path: "/tmp/p".into(),
+    }).await.expect("project");
+    let cols = columns::seed_defaults(&pool, &project_id).await.expect("cols");
+    let task_id = task::create(&pool, NewTask {
+        project_id: project_id.clone(),
+        column_id: cols[0].clone(),
+        title: "t".into(), description: None,
+        tags: vec![], linked_files: vec![],
+    }).await.expect("task");
+
+    let uri = format!("/api/tasks/{}/attempts", task_id.as_str());
+    let resp = app.oneshot(
+        Request::builder().method(Method::GET).uri(uri).body(Body::empty()).unwrap(),
+    ).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert!(json.is_array());
+    assert_eq!(json.as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn get_task_attempts_returns_dispatched_attempts() {
+    let (app, pool) = fresh_app_with_pool().await;
+    let project_id = project::create(&pool, NewProject {
+        name: "p".into(), repo_path: "/tmp/p".into(),
+    }).await.expect("project");
+    let cols = columns::seed_defaults(&pool, &project_id).await.expect("cols");
+    let task_id = task::create(&pool, NewTask {
+        project_id: project_id.clone(),
+        column_id: cols[0].clone(),
+        title: "t".into(), description: None,
+        tags: vec![], linked_files: vec![],
+    }).await.expect("task");
+
+    // Dispatch 2 attempts via the existing endpoint
+    let body = r#"{"agent":"mock","batch":2}"#;
+    let dispatch_uri = format!("/api/tasks/{}/dispatch", task_id.as_str());
+    let resp = app.clone().oneshot(
+        Request::builder().method(Method::POST).uri(dispatch_uri)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body)).unwrap(),
+    ).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let uri = format!("/api/tasks/{}/attempts", task_id.as_str());
+    let resp = app.oneshot(
+        Request::builder().method(Method::GET).uri(uri).body(Body::empty()).unwrap(),
+    ).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    let arr = json.as_array().expect("array");
+    assert_eq!(arr.len(), 2);
+    for att in arr {
+        assert_eq!(att["task_id"], task_id.as_str());
+        assert_eq!(att["agent_id"], "mock");
+    }
 }

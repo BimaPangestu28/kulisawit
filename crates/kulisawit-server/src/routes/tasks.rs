@@ -8,12 +8,15 @@ use axum::{Json, Router};
 
 use kulisawit_core::TaskId;
 use kulisawit_db::{
-    columns, project,
+    attempt, columns, project,
     task::{self, NewTask},
 };
 use kulisawit_orchestrator::dispatch_batch_spawned;
 
-use crate::wire::{DispatchRequest, DispatchResponse, NewTaskRequest, TaskResponse, UpdateTaskRequest};
+use crate::wire::{
+    AttemptResponse, DispatchRequest, DispatchResponse, NewTaskRequest, TaskResponse,
+    UpdateTaskRequest,
+};
 use crate::{AppState, ServerError, ServerResult};
 
 pub fn routes() -> Router<AppState> {
@@ -21,6 +24,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/tasks", post(create))
         .route("/api/tasks/:id", get(get_by_id).patch(update))
         .route("/api/tasks/:id/dispatch", post(dispatch))
+        .route("/api/tasks/:id/attempts", get(list_attempts))
 }
 
 async fn create(
@@ -98,6 +102,20 @@ async fn dispatch(
         })?;
 
     Ok(Json(DispatchResponse { attempt_ids }))
+}
+
+async fn list_attempts(
+    State(state): State<AppState>,
+    Path(id): Path<TaskId>,
+) -> ServerResult<Json<Vec<AttemptResponse>>> {
+    if task::get(state.orch.pool(), &id).await?.is_none() {
+        return Err(ServerError::NotFound {
+            entity: "task",
+            id: id.as_str().to_owned(),
+        });
+    }
+    let rows = attempt::list_for_task(state.orch.pool(), &id).await?;
+    Ok(Json(rows.into_iter().map(Into::into).collect()))
 }
 
 async fn update(
